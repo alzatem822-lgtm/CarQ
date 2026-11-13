@@ -20,7 +20,8 @@
     "test:debug": "node --inspect-brk --experimental-vm-modules -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "typeorm": "node --env-file=../.env ./node_modules/typeorm/cli-ts-node-commonjs.js -d src/compartido/base-datos/origen-datos.ts",
     "migracion:ejecutar": "npm run typeorm -- migration:run",
-    "migracion:revertir": "npm run typeorm -- migration:revert"
+    "migracion:revertir": "npm run typeorm -- migration:revert",
+    "seed:ejecutar": "node --env-file=../.env -r ts-node/register src/compartido/base-datos/ejecutar-seeds.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
