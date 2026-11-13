@@ -1,3 +1,4 @@
+import { Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 const entornoPrueba = {
@@ -14,6 +15,9 @@ const entornoPrueba = {
   JWT_SECRETO: 'secreto-de-prueba',
 };
 
+@Module({})
+class ModuloBaseDatosVacio {}
+
 describe('AppModule', () => {
   beforeAll(() => {
     Object.assign(process.env, entornoPrueba);
@@ -25,12 +29,18 @@ describe('AppModule', () => {
     }
   });
 
-  it('compila con los tres módulos', async () => {
+  it('compila con los tres módulos sin conectar a la base', async () => {
     const { AppModule } = await import('./app.module');
+    const { ModuloBaseDatos } = await import(
+      './compartido/base-datos/modulo-base-datos'
+    );
 
     const modulo = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideModule(ModuloBaseDatos)
+      .useModule(ModuloBaseDatosVacio)
+      .compile();
 
     expect(modulo).toBeDefined();
   });

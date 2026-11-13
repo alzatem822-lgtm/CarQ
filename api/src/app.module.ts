@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ModuloBaseDatos } from './compartido/base-datos/modulo-base-datos';
 import { ModuloConfiguracionSistema } from './compartido/configuracion/modulo-configuracion-sistema';
 import { ModuloLogging } from './compartido/logging/modulo-logging';
 import { ModuloRedis } from './compartido/redis/modulo-redis';
@@ -11,6 +12,7 @@ import { ConfiguracionModule } from './modules/configuracion/configuracion.modul
     ModuloConfiguracionSistema,
     ModuloLogging,
     ModuloRedis,
+    ModuloBaseDatos,
     VehiculosModule,
     AccesoModule,
     ConfiguracionModule,
