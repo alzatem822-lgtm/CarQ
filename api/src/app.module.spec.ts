@@ -10,6 +10,7 @@ const entornoPrueba = {
   URL_REDIS: 'redis://redis:6379',
   URL_MQTT: 'mqtt://mqtt:1883',
   URL_LPR: 'http://lpr:8000',
+  URL_WEB: 'http://localhost:3000',
   JWT_SECRETO: 'secreto-de-prueba',
 };
 

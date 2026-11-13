@@ -14,6 +14,7 @@ export type Entorno = {
   URL_REDIS: string;
   URL_MQTT: string;
   URL_LPR: string;
+  URL_WEB: string;
   JWT_SECRETO: string;
   JWT_EXPIRACION: string;
 };
@@ -72,6 +73,7 @@ export function validarEntorno(crudo: Record<string, unknown>): Entorno {
     URL_REDIS: texto('URL_REDIS'),
     URL_MQTT: texto('URL_MQTT'),
     URL_LPR: texto('URL_LPR'),
+    URL_WEB: texto('URL_WEB'),
     JWT_SECRETO: texto('JWT_SECRETO'),
     JWT_EXPIRACION: texto('JWT_EXPIRACION', '8h'),
   };
