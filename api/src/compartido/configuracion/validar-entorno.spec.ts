@@ -10,6 +10,7 @@ const entornoValido = {
   URL_REDIS: 'redis://redis:6379',
   URL_MQTT: 'mqtt://mqtt:1883',
   URL_LPR: 'http://lpr:8000',
+  URL_WEB: 'http://localhost:3000',
   JWT_SECRETO: 'secreto-de-prueba',
 };
 
@@ -29,6 +30,12 @@ describe('validarEntorno', () => {
     expect(() => validarEntorno(incompleto)).toThrow(
       'JWT_SECRETO es obligatoria',
     );
+  });
+
+  it('falla si falta la URL del web', () => {
+    const incompleto = { ...entornoValido, URL_WEB: undefined };
+
+    expect(() => validarEntorno(incompleto)).toThrow('URL_WEB es obligatoria');
   });
 
   it('informa todas las variables faltantes juntas', () => {
