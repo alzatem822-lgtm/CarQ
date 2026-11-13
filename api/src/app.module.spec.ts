@@ -1,11 +1,36 @@
 import { Test } from '@nestjs/testing';
-import { AppModule } from './app.module';
+
+const entornoPrueba = {
+  ZONA_HORARIA: 'America/Bogota',
+  INICIO_DIA_OPERATIVO: '06:00',
+  LECTOR_PLACAS: 'simulado',
+  FUENTE_SENSOR: 'simulado',
+  CONTROLADOR_BARRERA: 'simulado',
+  URL_BASE_DATOS: 'postgresql://carq:carq@db:5432/carq',
+  URL_REDIS: 'redis://redis:6379',
+  URL_MQTT: 'mqtt://mqtt:1883',
+  URL_LPR: 'http://lpr:8000',
+  JWT_SECRETO: 'secreto-de-prueba',
+};
 
 describe('AppModule', () => {
+  beforeAll(() => {
+    Object.assign(process.env, entornoPrueba);
+  });
+
+  afterAll(() => {
+    for (const clave of Object.keys(entornoPrueba)) {
+      delete process.env[clave];
+    }
+  });
+
   it('compila con los tres módulos', async () => {
+    const { AppModule } = await import('./app.module');
+
     const modulo = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
+
     expect(modulo).toBeDefined();
   });
 });
