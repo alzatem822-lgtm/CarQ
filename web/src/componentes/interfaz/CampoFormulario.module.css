@@ -1,0 +1,25 @@
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.etiqueta {
+  font-weight: 600;
+}
+
+.entrada {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.entradaError {
+  border-color: #b91c1c;
+}
+
+.mensajeError {
+  color: #b91c1c;
+  font-size: 0.875rem;
+}
