@@ -31,4 +31,25 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Criterio de CARQ-9: la hora solo se obtiene a través del puerto Reloj
+    files: [
+      'src/modules/*/dominio/**/*.ts',
+      'src/modules/*/aplicacion/**/*.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+          message: 'Usa el puerto Reloj en lugar de new Date().',
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+          message: 'Usa el puerto Reloj en lugar de Date.now().',
+        },
+      ],
+    },
+  },
 );
