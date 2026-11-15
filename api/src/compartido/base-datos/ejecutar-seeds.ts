@@ -1,7 +1,8 @@
 import origen from './origen-datos';
+import { sembrarCupos } from './seeds/cupos.seed';
 import { sembrarSedeYCarril } from './seeds/sede-carril.seed';
 
-const seeds = [sembrarSedeYCarril];
+const seeds = [sembrarSedeYCarril, sembrarCupos];
 
 async function ejecutar(): Promise<void> {
   await origen.initialize();
