@@ -3,12 +3,14 @@ import { sembrarCupos } from './seeds/cupos.seed';
 import { sembrarSedeYCarril } from './seeds/sede-carril.seed';
 import { sembrarTarifasYFranja } from './seeds/tarifas-franja.seed';
 import { sembrarUsuarios } from './seeds/usuarios.seed';
+import { sembrarUmbral } from './seeds/umbral.seed';  
 
 const seeds = [
   sembrarSedeYCarril,
   sembrarCupos,
   sembrarUsuarios,
   sembrarTarifasYFranja,
+  sembrarUmbral,
 ];
 
 async function ejecutar(): Promise<void> {
