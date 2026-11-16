@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 
 const entornoPrueba = {
   ZONA_HORARIA: 'America/Bogota',
@@ -15,7 +16,11 @@ const entornoPrueba = {
   JWT_SECRETO: 'secreto-de-prueba',
 };
 
-@Module({})
+@Global()
+@Module({
+  providers: [{ provide: DataSource, useValue: {} }],
+  exports: [DataSource],
+})
 class ModuloBaseDatosVacio {}
 
 describe('AppModule', () => {
@@ -30,9 +35,9 @@ describe('AppModule', () => {
   });
 
   it('compila con los tres módulos sin conectar a la base', async () => {
-    const { AppModule } = await import('./app.module');
+    const { AppModule } = await import('./app.module.js');
     const { ModuloBaseDatos } = await import(
-      './compartido/base-datos/modulo-base-datos'
+      './compartido/base-datos/modulo-base-datos.js'
     );
 
     const modulo = await Test.createTestingModule({
