@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { GuardiaDeRutas } from '@/componentes/GuardiaDeRutas';
+import { Navegacion } from '@/componentes/Navegacion';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -7,28 +8,16 @@ export const metadata: Metadata = {
   description: 'Sistema de parqueadero con reconocimiento de placas',
 };
 
-const RUTAS = [
-  { href: '/login', etiqueta: 'Login' },
-  { href: '/carril', etiqueta: 'Carril' },
-  { href: '/caja', etiqueta: 'Caja' },
-  { href: '/administracion', etiqueta: 'Administración' },
-  { href: '/consulta', etiqueta: 'Consulta' },
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
       <body>
-        <nav style={{ display: 'flex', gap: '1rem', padding: '1rem' }}>
-          {RUTAS.map((ruta) => (
-            <Link key={ruta.href} href={ruta.href}>
-              {ruta.etiqueta}
-            </Link>
-          ))}
-        </nav>
-        <main style={{ padding: '1rem' }}>{children}</main>
+        <Navegacion />
+        <main style={{ padding: '1rem' }}>
+          <GuardiaDeRutas>{children}</GuardiaDeRutas>
+        </main>
       </body>
     </html>
   );
