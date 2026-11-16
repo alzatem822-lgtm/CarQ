@@ -21,3 +21,18 @@ export function guardarCupos(
     body: JSON.stringify({ cupos }),
   });
 }
+
+export interface RespuestaUmbral {
+  readonly umbral: number;
+}
+
+export function consultarUmbral(): Promise<RespuestaUmbral> {
+  return peticion<RespuestaUmbral>('/configuracion/umbral');
+}
+
+export function guardarUmbral(umbral: number): Promise<RespuestaUmbral> {
+  return peticion<RespuestaUmbral>('/configuracion/umbral', {
+    method: 'PUT',
+    body: JSON.stringify({ umbral }),
+  });
+}

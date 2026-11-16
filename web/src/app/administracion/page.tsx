@@ -1,4 +1,5 @@
 import { FormularioCupos } from '@/componentes/administracion/FormularioCupos';
+import { FormularioUmbral } from '@/componentes/administracion/FormularioUmbral';
 import { SeccionAdministracion } from '@/componentes/administracion/SeccionAdministracion';
 import { Alerta } from '@/componentes/interfaz/Alerta';
 
@@ -16,7 +17,7 @@ export default function AdministracionPage() {
         <FormularioCupos />
       </SeccionAdministracion>
       <SeccionAdministracion titulo="Umbral de confianza">
-        <Alerta>Formulario de umbral pendiente.</Alerta>
+        <FormularioUmbral />
       </SeccionAdministracion>
     </>
   );
