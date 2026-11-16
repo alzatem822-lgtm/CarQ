@@ -12,6 +12,7 @@ import { UsuarioPostgresRepository } from './infraestructura/usuario-postgres.re
 
 @Module({
   controllers: [AuthController],
+  exports: [EmisorTokens],
   providers: [
     { provide: HasheadorContrasena, useClass: HasheadorBcrypt },
     {
