@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 
 const entornoPrueba = {
   ZONA_HORARIA: 'America/Bogota',
@@ -15,7 +16,12 @@ const entornoPrueba = {
   JWT_SECRETO: 'secreto-de-prueba',
 };
 
-@Module({})
+@Global()
+@Module({
+  providers: [{ provide: DataSource, useValue: {} }],
+  exports: [DataSource],
+})
+
 class ModuloBaseDatosVacio {}
 
 describe('AppModule', () => {
