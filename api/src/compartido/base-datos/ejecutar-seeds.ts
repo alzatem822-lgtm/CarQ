@@ -1,9 +1,15 @@
 import origen from './origen-datos';
 import { sembrarCupos } from './seeds/cupos.seed';
 import { sembrarSedeYCarril } from './seeds/sede-carril.seed';
+import { sembrarTarifasYFranja } from './seeds/tarifas-franja.seed';
 import { sembrarUsuarios } from './seeds/usuarios.seed';
 
-const seeds = [sembrarSedeYCarril, sembrarCupos, sembrarUsuarios];
+const seeds = [
+  sembrarSedeYCarril,
+  sembrarCupos,
+  sembrarUsuarios,
+  sembrarTarifasYFranja,
+];
 
 async function ejecutar(): Promise<void> {
   await origen.initialize();
