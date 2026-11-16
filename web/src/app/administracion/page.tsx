@@ -1,14 +1,22 @@
+import { SeccionAdministracion } from '@/componentes/administracion/SeccionAdministracion';
 import { Alerta } from '@/componentes/interfaz/Alerta';
-import { CampoFormulario } from '@/componentes/interfaz/CampoFormulario';
-import { InsigniaEstado } from '@/componentes/interfaz/InsigniaEstado';
 
 export default function AdministracionPage() {
   return (
     <>
       <h1>Administración</h1>
-      <CampoFormulario etiqueta="Cupo de carros" name="cupoCarros" type="number" />
-      <InsigniaEstado estado="lleno" />
-      <Alerta tono="advertencia">La tarifa nocturna debe ser menor que la diurna.</Alerta>
+      <SeccionAdministracion titulo="Tarifas">
+        <Alerta>Formulario de tarifas pendiente (CARQ-73).</Alerta>
+      </SeccionAdministracion>
+      <SeccionAdministracion titulo="Franja diurna">
+        <Alerta>Formulario de franja pendiente (CARQ-74).</Alerta>
+      </SeccionAdministracion>
+      <SeccionAdministracion titulo="Cupos">
+        <Alerta>Formulario de cupos pendiente.</Alerta>
+      </SeccionAdministracion>
+      <SeccionAdministracion titulo="Umbral de confianza">
+        <Alerta>Formulario de umbral pendiente.</Alerta>
+      </SeccionAdministracion>
     </>
   );
 }
