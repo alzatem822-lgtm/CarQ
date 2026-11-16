@@ -1,3 +1,4 @@
+import { FormularioCupos } from '@/componentes/administracion/FormularioCupos';
 import { SeccionAdministracion } from '@/componentes/administracion/SeccionAdministracion';
 import { Alerta } from '@/componentes/interfaz/Alerta';
 
@@ -12,7 +13,7 @@ export default function AdministracionPage() {
         <Alerta>Formulario de franja pendiente (CARQ-74).</Alerta>
       </SeccionAdministracion>
       <SeccionAdministracion titulo="Cupos">
-        <Alerta>Formulario de cupos pendiente.</Alerta>
+        <FormularioCupos />
       </SeccionAdministracion>
       <SeccionAdministracion titulo="Umbral de confianza">
         <Alerta>Formulario de umbral pendiente.</Alerta>
