@@ -62,4 +62,14 @@ describe('ActualizarCupo', () => {
 
     expect(repo.cupos).toEqual([original]);
   });
+
+  it('resuelve la sede con una función cuando no se le da el id directo', async () => {
+    const repo = new CupoRepositoryEnMemoria();
+    const resolverSede = jest.fn(() => Promise.resolve('s7'));
+
+    await new ActualizarCupo(repo, resolverSede).ejecutar(TipoVehiculo.MOTO, 8);
+
+    expect(resolverSede).toHaveBeenCalledTimes(1);
+    expect(repo.cupos[0].sedeId).toBe('s7');
+  });
 });
