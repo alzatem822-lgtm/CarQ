@@ -21,7 +21,6 @@ const entornoPrueba = {
   providers: [{ provide: DataSource, useValue: {} }],
   exports: [DataSource],
 })
-
 class ModuloBaseDatosVacio {}
 
 describe('AppModule', () => {
@@ -36,9 +35,9 @@ describe('AppModule', () => {
   });
 
   it('compila con los tres módulos sin conectar a la base', async () => {
-    const { AppModule } = await import('./app.module');
+    const { AppModule } = await import('./app.module.js');
     const { ModuloBaseDatos } = await import(
-      './compartido/base-datos/modulo-base-datos'
+      './compartido/base-datos/modulo-base-datos.js'
     );
 
     const modulo = await Test.createTestingModule({
