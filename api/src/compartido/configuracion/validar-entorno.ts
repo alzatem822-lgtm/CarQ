@@ -66,7 +66,7 @@ export function validarEntorno(crudo: Record<string, unknown>): Entorno {
     PUERTO: puerto,
     ZONA_HORARIA: zonaHoraria,
     INICIO_DIA_OPERATIVO: inicioDia,
-    LECTOR_PLACAS: opcion('LECTOR_PLACAS', LECTORES),
+    LECTOR_PLACAS: opcion('LECTOR_PLACAS', LECTORES, 'simulado'),
     FUENTE_SENSOR: opcion('FUENTE_SENSOR', FUENTES),
     CONTROLADOR_BARRERA: opcion('CONTROLADOR_BARRERA', FUENTES),
     URL_BASE_DATOS: texto('URL_BASE_DATOS'),
