@@ -6,6 +6,7 @@ import { ModuloRedis } from './compartido/redis/modulo-redis';
 import { VehiculosModule } from './modules/vehiculos/vehiculos.module';
 import { AccesoModule } from './modules/acceso/acceso.module';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
+import { CarrilModule } from './modules/carril/carril.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ConfiguracionModule } from './modules/configuracion/configuracion.modul
     VehiculosModule,
     AccesoModule,
     ConfiguracionModule,
+    CarrilModule,
   ],
 })
 export class AppModule {}
