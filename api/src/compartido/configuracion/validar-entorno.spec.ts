@@ -24,6 +24,12 @@ describe('validarEntorno', () => {
     expect(entorno.ZONA_HORARIA).toBe('America/Bogota');
   });
 
+  it('usa el lector simulado si no se define LECTOR_PLACAS', () => {
+    const sinLector = { ...entornoValido, LECTOR_PLACAS: undefined };
+
+    expect(validarEntorno(sinLector).LECTOR_PLACAS).toBe('simulado');
+  });
+
   it('falla si falta una variable obligatoria', () => {
     const incompleto = { ...entornoValido, JWT_SECRETO: undefined };
 
