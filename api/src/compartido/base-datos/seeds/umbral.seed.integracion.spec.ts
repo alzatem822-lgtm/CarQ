@@ -1,19 +1,14 @@
 import { DataSource } from 'typeorm';
+import {
+  iniciarBaseDatosPruebas,
+  limpiarBaseDatosPruebas,
+} from '../../pruebas/base-datos-pruebas';
 import { sembrarUmbral } from './umbral.seed';
-
-try {
-  process.loadEnvFile('../.env');
-} catch {
-  // sin .env: se usan las variables del entorno
-}
 
 const NOMBRE_SEDE = 'Sede principal';
 
 describe('sembrarUmbral (integracion)', () => {
-  const origen = new DataSource({
-    type: 'postgres',
-    url: process.env.URL_BASE_DATOS_MIGRACIONES ?? process.env.URL_BASE_DATOS,
-  });
+  let origen: DataSource;
 
   async function leerUmbral(): Promise<number[]> {
     const filas: { umbral: number }[] = await origen.query(
@@ -27,7 +22,12 @@ describe('sembrarUmbral (integracion)', () => {
   }
 
   beforeAll(async () => {
-    await origen.initialize();
+    origen = await iniciarBaseDatosPruebas();
+  }, 30000);
+
+  beforeEach(async () => {
+    await limpiarBaseDatosPruebas(origen);
+    await origen.query(`INSERT INTO sede (nombre) VALUES ($1)`, [NOMBRE_SEDE]);
     await sembrarUmbral(origen);
   });
 
@@ -52,20 +52,14 @@ describe('sembrarUmbral (integracion)', () => {
   it('repetir el seed no pisa un umbral ya editado', async () => {
     const [original] = await leerUmbral();
     const editado = original === 0.55 ? 0.65 : 0.55;
-    const cambiar = (valor: number) =>
-      origen.query(
-        `UPDATE parametro_sede SET umbral_confianza = $2
-         WHERE sede_id = (SELECT id FROM sede WHERE nombre = $1)`,
-        [NOMBRE_SEDE, valor],
-      );
+    await origen.query(
+      `UPDATE parametro_sede SET umbral_confianza = $2
+       WHERE sede_id = (SELECT id FROM sede WHERE nombre = $1)`,
+      [NOMBRE_SEDE, editado],
+    );
 
-    await cambiar(editado);
-    try {
-      await sembrarUmbral(origen);
+    await sembrarUmbral(origen);
 
-      expect(await leerUmbral()).toEqual([editado]);
-    } finally {
-      await cambiar(original);
-    }
+    expect(await leerUmbral()).toEqual([editado]);
   });
 });

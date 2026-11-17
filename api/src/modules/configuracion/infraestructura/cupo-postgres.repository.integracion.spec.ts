@@ -1,40 +1,32 @@
 import { DataSource } from 'typeorm';
+import {
+  iniciarBaseDatosPruebas,
+  limpiarBaseDatosPruebas,
+} from '../../../compartido/pruebas/base-datos-pruebas';
 import { TipoVehiculo } from '../../vehiculos/dominio/tipo-vehiculo';
 import { Cupo } from '../dominio/cupo';
 import { CupoPostgresRepository } from './cupo-postgres.repository';
 
-try {
-  process.loadEnvFile('../.env');
-} catch {
-  // sin .env: se usan las variables del entorno
-}
-
-const NOMBRE_SEDE = 'Sede prueba cupos';
-
 describe('CupoPostgresRepository (integración)', () => {
-  const origen = new DataSource({
-    type: 'postgres',
-    url: process.env.URL_BASE_DATOS_MIGRACIONES ?? process.env.URL_BASE_DATOS,
-  });
+  let origen: DataSource;
   let repositorio: CupoPostgresRepository;
   let sedeId: string;
 
-  const cuposDePrueba = async (): Promise<Cupo[]> =>
-    (await repositorio.obtenerTodos()).filter((c) => c.sedeId === sedeId);
-
   beforeAll(async () => {
-    await origen.initialize();
+    origen = await iniciarBaseDatosPruebas();
     repositorio = new CupoPostgresRepository(origen);
+  }, 30000);
+
+  beforeEach(async () => {
+    await limpiarBaseDatosPruebas(origen);
     const [fila] = await origen.query(
       `INSERT INTO sede (nombre) VALUES ($1) RETURNING id`,
-      [NOMBRE_SEDE],
+      ['Sede prueba cupos'],
     );
     sedeId = String(fila.id);
   });
 
   afterAll(async () => {
-    await origen.query(`DELETE FROM cupo WHERE sede_id = $1`, [Number(sedeId)]);
-    await origen.query(`DELETE FROM sede WHERE id = $1`, [Number(sedeId)]);
     await origen.destroy();
   });
 
@@ -44,7 +36,7 @@ describe('CupoPostgresRepository (integración)', () => {
       Cupo.crear(sedeId, TipoVehiculo.MOTO, 5),
     ]);
 
-    const cupos = await cuposDePrueba();
+    const cupos = await repositorio.obtenerTodos();
 
     expect(cupos).toHaveLength(2);
     expect(cupos.find((c) => c.tipoVehiculo.equals(TipoVehiculo.CARRO))?.maximo).toBe(3);
@@ -52,11 +44,12 @@ describe('CupoPostgresRepository (integración)', () => {
   });
 
   it('actualiza el máximo sin duplicar el cupo del tipo', async () => {
+    await repositorio.guardarTodos([Cupo.crear(sedeId, TipoVehiculo.CARRO, 3)]);
     await repositorio.guardarTodos([Cupo.crear(sedeId, TipoVehiculo.CARRO, 4)]);
 
-    const cupos = await cuposDePrueba();
+    const cupos = await repositorio.obtenerTodos();
 
-    expect(cupos).toHaveLength(2);
-    expect(cupos.find((c) => c.tipoVehiculo.equals(TipoVehiculo.CARRO))?.maximo).toBe(4);
+    expect(cupos).toHaveLength(1);
+    expect(cupos[0].maximo).toBe(4);
   });
 });

@@ -1,5 +1,8 @@
 import { DataSource } from 'typeorm';
-import origenDatos from '../../../compartido/base-datos/origen-datos';
+import {
+  iniciarBaseDatosPruebas,
+  limpiarBaseDatosPruebas,
+} from '../../../compartido/pruebas/base-datos-pruebas';
 import { UmbralConfianza } from '../dominio/umbral-confianza';
 import { ParametroRepositoryPostgres } from './parametro.repository.postgres';
 
@@ -9,17 +12,17 @@ describe('ParametroRepositoryPostgres (integración, PostgreSQL real)', () => {
   let sedeId: number;
 
   beforeAll(async () => {
-    conexion = await origenDatos.initialize();
-    await conexion.runMigrations();
+    conexion = await iniciarBaseDatosPruebas();
     repositorio = new ParametroRepositoryPostgres(conexion);
-    const sedes: { id: number }[] = await conexion.query(
-      `SELECT id FROM sede ORDER BY id LIMIT 1`,
-    );
-    sedeId = sedes[0].id;
-  });
+  }, 30000);
 
   beforeEach(async () => {
-    await conexion.query(`DELETE FROM parametro_sede WHERE sede_id = $1`, [sedeId]);
+    await limpiarBaseDatosPruebas(conexion);
+    const [sede]: { id: number }[] = await conexion.query(
+      `INSERT INTO sede (nombre) VALUES ($1) RETURNING id`,
+      ['Sede prueba parametros'],
+    );
+    sedeId = sede.id;
     await conexion.query(
       `INSERT INTO parametro_sede (sede_id, umbral_confianza) VALUES ($1, 0.80)`,
       [sedeId],
