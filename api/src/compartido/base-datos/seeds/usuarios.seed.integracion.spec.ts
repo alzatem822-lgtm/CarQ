@@ -3,29 +3,28 @@ import { IniciarSesion } from '../../../modules/acceso/aplicacion/iniciar-sesion
 import { EmisorJwt } from '../../../modules/acceso/infraestructura/emisor-jwt';
 import { HasheadorBcrypt } from '../../../modules/acceso/infraestructura/hasheador-bcrypt';
 import { UsuarioPostgresRepository } from '../../../modules/acceso/infraestructura/usuario-postgres.repository';
+import {
+  iniciarBaseDatosPruebas,
+  limpiarBaseDatosPruebas,
+} from '../../pruebas/base-datos-pruebas';
 import { USUARIOS_DE_PRUEBA, sembrarUsuarios } from './usuarios.seed';
 
-try {
-  process.loadEnvFile('../.env');
-} catch {
-  // sin .env: se usan las variables del entorno
-}
-
 describe('sembrarUsuarios (integración)', () => {
-  const origen = new DataSource({
-    type: 'postgres',
-    url: process.env.URL_BASE_DATOS_MIGRACIONES ?? process.env.URL_BASE_DATOS,
-  });
+  let origen: DataSource;
   let iniciarSesion: IniciarSesion;
 
   beforeAll(async () => {
-    await origen.initialize();
-    await sembrarUsuarios(origen);
+    origen = await iniciarBaseDatosPruebas();
     iniciarSesion = new IniciarSesion(
       new UsuarioPostgresRepository(origen),
       new HasheadorBcrypt(),
       new EmisorJwt('secreto-de-prueba', '1h'),
     );
+  }, 30000);
+
+  beforeEach(async () => {
+    await limpiarBaseDatosPruebas(origen);
+    await sembrarUsuarios(origen);
   });
 
   afterAll(async () => {

@@ -17,7 +17,7 @@
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",
     "test:cov": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage",
-    "test:integracion": "node --env-file=../.env --experimental-vm-modules ./node_modules/jest/bin/jest.js --testPathIgnorePatterns=/node_modules/ --testRegex=\\.integracion\\.spec\\.ts$",
+    "test:integracion": "node --env-file=../.env --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --testPathIgnorePatterns=/node_modules/ --testRegex=\\.integracion\\.spec\\.ts$",
     "test:debug": "node --inspect-brk --experimental-vm-modules -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "typeorm": "node --env-file=../.env ./node_modules/typeorm/cli-ts-node-commonjs.js -d src/compartido/base-datos/origen-datos.ts",
     "migracion:ejecutar": "npm run typeorm -- migration:run",

@@ -1,26 +1,25 @@
 import { DataSource } from 'typeorm';
+import {
+  iniciarBaseDatosPruebas,
+  limpiarBaseDatosPruebas,
+} from '../../../compartido/pruebas/base-datos-pruebas';
 import { Rol } from '../dominio/rol';
 import { UsuarioPostgresRepository } from './usuario-postgres.repository';
-
-try {
-  process.loadEnvFile('../.env');
-} catch {
-  // sin .env: se usan las variables del entorno
-}
 
 const NOMBRE_USUARIO = 'usuario-prueba-repositorio';
 const HASH = 'hash-de-prueba';
 
 describe('UsuarioPostgresRepository (integración)', () => {
-  const origen = new DataSource({
-    type: 'postgres',
-    url: process.env.URL_BASE_DATOS_MIGRACIONES ?? process.env.URL_BASE_DATOS,
-  });
+  let origen: DataSource;
   let repositorio: UsuarioPostgresRepository;
 
   beforeAll(async () => {
-    await origen.initialize();
+    origen = await iniciarBaseDatosPruebas();
     repositorio = new UsuarioPostgresRepository(origen);
+  }, 30000);
+
+  beforeEach(async () => {
+    await limpiarBaseDatosPruebas(origen);
     await origen.query(
       `INSERT INTO usuario (nombre, hash_contrasena, rol) VALUES ($1, $2, $3)`,
       [NOMBRE_USUARIO, HASH, Rol.ADMINISTRADOR.codigo],
@@ -28,7 +27,6 @@ describe('UsuarioPostgresRepository (integración)', () => {
   });
 
   afterAll(async () => {
-    await origen.query(`DELETE FROM usuario WHERE nombre = $1`, [NOMBRE_USUARIO]);
     await origen.destroy();
   });
 
