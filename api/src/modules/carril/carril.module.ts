@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { ConfiguracionModule } from '../configuracion/configuracion.module';
+import { CupoRepository } from '../configuracion/aplicacion/cupo.repository';
+import { ConsultarOcupacion } from './aplicacion/consultar-ocupacion';
 import { EstadoCarrilStore } from './aplicacion/estado-carril.store';
 import { EstanciaRepository } from './aplicacion/estancia.repository';
 import { EventoRepository } from './aplicacion/evento.repository';
@@ -8,7 +11,14 @@ import { EstanciaPostgresRepository } from './infraestructura/estancia-postgres.
 import { EventoPostgresRepository } from './infraestructura/evento-postgres.repository';
 
 @Module({
+  imports: [ConfiguracionModule],
   providers: [
+    {
+      provide: ConsultarOcupacion,
+      useFactory: (cupos: CupoRepository, estancias: EstanciaRepository) =>
+        new ConsultarOcupacion(cupos, estancias),
+      inject: [CupoRepository, EstanciaRepository],
+    },
     { provide: EstadoCarrilStore, useClass: EstadoCarrilEnMemoriaStore },
     {
       provide: EstanciaRepository,
@@ -21,6 +31,6 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
       inject: [DataSource],
     },
   ],
-  exports: [EstadoCarrilStore],
+  exports: [EstadoCarrilStore, ConsultarOcupacion],
 })
 export class CarrilModule {}
