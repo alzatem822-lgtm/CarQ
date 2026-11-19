@@ -16,6 +16,8 @@ import { sembrarUsuarios } from '../base-datos/seeds/usuarios.seed';
 import { sembrarCupos } from '../base-datos/seeds/cupos.seed';
 import { sembrarTarifasYFranja } from '../base-datos/seeds/tarifas-franja.seed';
 import { sembrarUmbral } from '../base-datos/seeds/umbral.seed';
+import { EstadoCarrilStore } from '../../modules/carril/aplicacion/estado-carril.store';
+import { estadoCarrilInicial } from '../../modules/carril/dominio/estado-carril';
 
 const SECRETO_PRUEBA = 'carq-solo-pruebas-http-integradas';
 const ESCRITURAS = [
@@ -481,6 +483,28 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     });
   });
 
+  it('simula llegada con JWT de operador y el sensor real de la aplicación', async () => {
+    const estado = app!.get(EstadoCarrilStore);
+    await estado.guardar(estadoCarrilInicial());
+    try {
+      await request(servidor())
+        .post('/carril/simulacion/llegada')
+        .set('Authorization', `Bearer ${tokenOperador}`)
+        .expect(200, { vehiculoPresente: true });
+      expect(await estado.obtener()).toEqual({
+        ...estadoCarrilInicial(),
+        vehiculoPresente: true,
+      });
+      await request(servidor())
+        .post('/carril/simulacion/llegada')
+        .set(admin())
+        .expect(403);
+      await request(servidor()).post('/carril/simulacion/llegada').expect(401);
+    } finally {
+      await estado.guardar(estadoCarrilInicial());
+    }
+  });
+
   it('sirve Swagger y refleja todas las rutas de la aplicación real', async () => {
     const r = await request(servidor()).get('/docs-json');
     expect(r.status).toBe(200);
@@ -490,6 +514,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       'get /cobros/pendientes',
       'post /pagos/efectivo',
       'get /carril/ocupacion',
+      'post /carril/simulacion/llegada',
       ...operaciones.map((o) => `${o.metodo} ${o.ruta}`),
     ].sort();
     const documentadas = Object.entries(r.body.paths)

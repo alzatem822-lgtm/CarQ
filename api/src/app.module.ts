@@ -8,6 +8,8 @@ import { AccesoModule } from './modules/acceso/acceso.module';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { CarrilModule } from './modules/carril/carril.module';
 import { CobrosModule } from './modules/cobros/cobros.module';
+import { registrarConSensorSimulado } from './compartido/configuracion/registrar-con-sensor-simulado';
+import { SimulacionCarrilModule } from './modules/carril/simulacion-carril.module';
 
 @Module({
   imports: [
@@ -19,6 +21,7 @@ import { CobrosModule } from './modules/cobros/cobros.module';
     AccesoModule,
     ConfiguracionModule,
     CarrilModule,
+    registrarConSensorSimulado(SimulacionCarrilModule),
     CobrosModule,
   ],
 })
