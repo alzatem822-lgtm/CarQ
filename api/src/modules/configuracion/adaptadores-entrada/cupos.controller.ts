@@ -47,9 +47,7 @@ export class CuposController {
       );
     }
 
-    for (const { tipo, maximo } of pedidos) {
-      await this.actualizarCupo.ejecutar(tipo, maximo);
-    }
+    await this.actualizarCupo.ejecutarVarios(pedidos);
     return this.respuesta();
   }
 

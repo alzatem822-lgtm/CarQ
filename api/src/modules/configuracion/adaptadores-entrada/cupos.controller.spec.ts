@@ -35,8 +35,8 @@ describe('/configuracion/cupos', () => {
       ]),
   };
   const actualizarCupoFalso = {
-    ejecutar: (tipo: TipoVehiculo, maximo: number) => {
-      guardados.push({ tipo: tipo.codigo, maximo });
+    ejecutarVarios: (pedidos: { tipo: TipoVehiculo; maximo: number }[]) => {
+      guardados.push(...pedidos.map(({ tipo, maximo }) => ({ tipo: tipo.codigo, maximo })));
       return Promise.resolve();
     },
   };
