@@ -24,7 +24,7 @@ import { ActualizarFranja } from './aplicacion/actualizar-franja';
 @Module({
   imports: [AccesoModule],
   controllers: [CuposController, UmbralController, TarifasController],
-  exports: [TarifaRepository, FranjaRepository],
+  exports: [TarifaRepository, FranjaRepository, CupoRepository],
   providers: [
     {
       provide: 'ResolverSedeConfiguracion',

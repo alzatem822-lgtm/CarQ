@@ -23,4 +23,15 @@ export class Cupo {
     }
     return new Cupo(sedeId.trim(), tipoVehiculo, maximo);
   }
+
+  /**
+   * Indica si cabe otro vehículo del tipo y sede de este cupo.
+   * La ocupación corresponde al número de estancias abiertas.
+   */
+  tieneDisponibilidad(ocupacion: number): boolean {
+    if (!Number.isInteger(ocupacion) || ocupacion < 0) {
+      throw new Error('La ocupación debe ser un entero no negativo');
+    }
+    return ocupacion < this.maximo;
+  }
 }

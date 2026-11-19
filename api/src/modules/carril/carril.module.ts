@@ -1,5 +1,11 @@
 import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { AccesoModule } from '../acceso/acceso.module';
+import { ConfiguracionModule } from '../configuracion/configuracion.module';
+import { CupoRepository } from '../configuracion/aplicacion/cupo.repository';
+import { obtenerIdSedePrincipal } from '../configuracion/infraestructura/sede-principal';
+import { OcupacionController } from './adaptadores-entrada/ocupacion.controller';
+import { ConsultarOcupacion } from './aplicacion/consultar-ocupacion';
 import { EstadoCarrilStore } from './aplicacion/estado-carril.store';
 import { EstanciaRepository } from './aplicacion/estancia.repository';
 import { EventoRepository } from './aplicacion/evento.repository';
@@ -8,11 +14,26 @@ import { EstanciaPostgresRepository } from './infraestructura/estancia-postgres.
 import { EventoPostgresRepository } from './infraestructura/evento-postgres.repository';
 
 @Module({
+  imports: [ConfiguracionModule, AccesoModule],
+  controllers: [OcupacionController],
   providers: [
+    {
+      provide: 'ResolverSedeCarril',
+      useFactory: (origen: DataSource) => async () =>
+        Number(await obtenerIdSedePrincipal(origen)),
+      inject: [DataSource],
+    },
+    {
+      provide: ConsultarOcupacion,
+      useFactory: (cupos: CupoRepository, estancias: EstanciaRepository) =>
+        new ConsultarOcupacion(cupos, estancias),
+      inject: [CupoRepository, EstanciaRepository],
+    },
     { provide: EstadoCarrilStore, useClass: EstadoCarrilEnMemoriaStore },
     {
       provide: EstanciaRepository,
-      useFactory: (origen: DataSource) => new EstanciaPostgresRepository(origen),
+      useFactory: (origen: DataSource) =>
+        new EstanciaPostgresRepository(origen),
       inject: [DataSource],
     },
     {
@@ -21,6 +42,6 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
       inject: [DataSource],
     },
   ],
-  exports: [EstadoCarrilStore],
+  exports: [EstadoCarrilStore, ConsultarOcupacion],
 })
 export class CarrilModule {}
