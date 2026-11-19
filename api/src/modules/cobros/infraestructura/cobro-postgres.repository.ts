@@ -61,6 +61,13 @@ export class CobroPostgresRepository extends CobroRepository {
     );
   }
 
+  bloquearPorId(id: number, sedeId: number): Promise<Cobro | null> {
+    return this.buscarUno(
+      `SELECT ${columnas} FROM cobro WHERE id = $1 AND sede_id = $2 FOR UPDATE`,
+      [id, sedeId],
+    );
+  }
+
   async guardar(cobro: Cobro): Promise<Cobro> {
     try {
       const [fila]: FilaCobro[] = await this.origen.query(
