@@ -12,10 +12,11 @@ interface FilaFranja {
 export class FranjaPostgresRepository implements FranjaRepository {
   constructor(private readonly origen: DataSource) {}
 
-  async obtener(): Promise<Franja> {
+  async obtener(sedeId?: string): Promise<Franja> {
     const filas: FilaFranja[] = await this.origen.query(
       `SELECT inicio_hora, fin_hora FROM franja
-       WHERE sede_id = (SELECT id FROM sede ORDER BY id LIMIT 1)`,
+       WHERE sede_id = COALESCE($1::integer, (SELECT id FROM sede ORDER BY id LIMIT 1))`,
+      [sedeId ?? null],
     );
     if (filas.length === 0) {
       throw new Error('No hay una franja configurada');

@@ -24,13 +24,39 @@ import { ActualizarFranja } from './aplicacion/actualizar-franja';
 @Module({
   imports: [AccesoModule],
   controllers: [CuposController, UmbralController, TarifasController],
+  exports: [TarifaRepository, FranjaRepository],
   providers: [
-    { provide: 'ResolverSedeConfiguracion', useFactory: (db: DataSource) => () => obtenerIdSedePrincipal(db), inject: [DataSource] },
-    { provide: TarifaRepository, useFactory: (db: DataSource) => new TarifaPostgresRepository(db), inject: [DataSource] },
-    { provide: FranjaRepository, useFactory: (db: DataSource) => new FranjaPostgresRepository(db), inject: [DataSource] },
-    { provide: ConsultarConfiguracionTarifas, useFactory: (tarifas: TarifaRepository, franja: FranjaRepository) => new ConsultarConfiguracionTarifas(tarifas, franja), inject: [TarifaRepository, FranjaRepository] },
-    { provide: ActualizarTarifas, useFactory: (tarifas: TarifaRepository) => new ActualizarTarifas(tarifas), inject: [TarifaRepository] },
-    { provide: ActualizarFranja, useFactory: (franja: FranjaRepository) => new ActualizarFranja(franja), inject: [FranjaRepository] },
+    {
+      provide: 'ResolverSedeConfiguracion',
+      useFactory: (db: DataSource) => () => obtenerIdSedePrincipal(db),
+      inject: [DataSource],
+    },
+    {
+      provide: TarifaRepository,
+      useFactory: (db: DataSource) => new TarifaPostgresRepository(db),
+      inject: [DataSource],
+    },
+    {
+      provide: FranjaRepository,
+      useFactory: (db: DataSource) => new FranjaPostgresRepository(db),
+      inject: [DataSource],
+    },
+    {
+      provide: ConsultarConfiguracionTarifas,
+      useFactory: (tarifas: TarifaRepository, franja: FranjaRepository) =>
+        new ConsultarConfiguracionTarifas(tarifas, franja),
+      inject: [TarifaRepository, FranjaRepository],
+    },
+    {
+      provide: ActualizarTarifas,
+      useFactory: (tarifas: TarifaRepository) => new ActualizarTarifas(tarifas),
+      inject: [TarifaRepository],
+    },
+    {
+      provide: ActualizarFranja,
+      useFactory: (franja: FranjaRepository) => new ActualizarFranja(franja),
+      inject: [FranjaRepository],
+    },
     {
       provide: CupoRepository,
       useFactory: (origen: DataSource) => new CupoPostgresRepository(origen),
