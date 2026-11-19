@@ -18,7 +18,8 @@ export async function iniciarBaseDatosPruebas(): Promise<DataSource> {
   if (!url) {
     throw new Error('Falta URL_BASE_DATOS_PRUEBAS en el entorno de pruebas');
   }
-  if (!url.includes('_pruebas')) {
+  const nombreBase = decodeURIComponent(new URL(url).pathname.slice(1));
+  if (!nombreBase.endsWith('_pruebas')) {
     throw new Error(
       'URL_BASE_DATOS_PRUEBAS debe apuntar a una base cuyo nombre termine en _pruebas',
     );
