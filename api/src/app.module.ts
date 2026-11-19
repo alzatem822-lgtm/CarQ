@@ -7,6 +7,7 @@ import { VehiculosModule } from './modules/vehiculos/vehiculos.module';
 import { AccesoModule } from './modules/acceso/acceso.module';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { CarrilModule } from './modules/carril/carril.module';
+import { CobrosModule } from './modules/cobros/cobros.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CarrilModule } from './modules/carril/carril.module';
     AccesoModule,
     ConfiguracionModule,
     CarrilModule,
+    CobrosModule,
   ],
 })
 export class AppModule {}
