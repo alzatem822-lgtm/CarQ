@@ -17,7 +17,12 @@ class TarifasEnMemoria extends TarifaRepository {
   }
 
   async guardarTodas(tarifas: Tarifa[]): Promise<void> {
-    this.tarifas = tarifas;
+    for (const tarifa of tarifas) {
+      const indice = this.tarifas.findIndex(
+        (actual) => actual.franja === tarifa.franja,
+      );
+      this.tarifas.splice(indice, 1, tarifa);
+    }
     this.guardados++;
   }
 }

@@ -19,7 +19,7 @@ export class ActualizarTarifas {
       throw new ErrorDominio('TARIFA_INVALIDA', (error as Error).message);
     }
 
-    await this.tarifas.guardarTodas(resultado);
+    await this.tarifas.guardarTodas(nuevas);
   }
 }
 

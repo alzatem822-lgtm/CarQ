@@ -31,6 +31,8 @@ describe('Configuración de tarifas y franja (HTTP y PostgreSQL)', () => {
   ];
   const consultar = () =>
     servidor().get(rutaTarifas).set('Authorization', admin);
+  const actualizarTarifas = (tarifas: typeof tarifasIniciales) =>
+    servidor().put(rutaTarifas).set('Authorization', admin).send({ tarifas });
 
   @Global()
   @Module({
@@ -98,5 +100,58 @@ describe('Configuración de tarifas y franja (HTTP y PostgreSQL)', () => {
       codigo: 'ERROR_INTERNO',
       motivo: 'Error interno del servidor',
     });
+  });
+
+  it('guarda varios cambios válidos y los lee desde PostgreSQL', async () => {
+    const tarifas = tarifasIniciales.map((tarifa) => ({
+      ...tarifa,
+      valor:
+        tarifa.tipoVehiculo === 'CARRO' ? tarifa.valor + 1000 : tarifa.valor,
+    }));
+    await actualizarTarifas(tarifas.slice(0, 2)).expect(200);
+    await consultar().expect(200, {
+      tarifas,
+      franja: { inicioHora: 6, finHora: 18 },
+    });
+  });
+
+  it('rechaza una actualización parcial que incumple RN-02', async () => {
+    await actualizarTarifas([{ ...tarifasIniciales[1], valor: 5000 }])
+      .expect(422)
+      .expect(({ body }) =>
+        expect(body).toMatchObject({ codigo: 'TARIFA_INVALIDA' }),
+      );
+    await consultar().expect(200, {
+      tarifas: tarifasIniciales,
+      franja: { inicioHora: 6, finHora: 18 },
+    });
+  });
+
+  it('revierte todos los cambios cuando PostgreSQL rechaza la segunda escritura', async () => {
+    await db.query(
+      'ALTER TABLE tarifa ADD CONSTRAINT ck_tarifa_prueba CHECK (valor <> 9999)',
+    );
+    try {
+      await actualizarTarifas([
+        { ...tarifasIniciales[0], valor: 6000 },
+        { ...tarifasIniciales[2], valor: 9999 },
+      ]).expect(422);
+      await consultar().expect(200, {
+        tarifas: tarifasIniciales,
+        franja: { inicioHora: 6, finHora: 18 },
+      });
+    } finally {
+      await db.query('ALTER TABLE tarifa DROP CONSTRAINT ck_tarifa_prueba');
+    }
+  });
+
+  it('conserva RN-02 ante actualizaciones parciales concurrentes', async () => {
+    const cambios = await Promise.all([
+      actualizarTarifas([{ ...tarifasIniciales[0], valor: 4000 }]),
+      actualizarTarifas([{ ...tarifasIniciales[1], valor: 4500 }]),
+    ]);
+    expect(cambios.map((respuesta) => respuesta.status).sort()).toEqual([
+      200, 422,
+    ]);
   });
 });
