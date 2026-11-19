@@ -11,6 +11,7 @@ import {
   guardarFranja,
   guardarTarifas,
   guardarUmbral,
+  type Horario,
   type TarifaConfigurada,
 } from '@/lib/configuracion';
 import { mensajeDeErrorApi } from '@/lib/mensaje-error-api';
@@ -23,7 +24,7 @@ const MAXIMO_TARIFA = 2147483647;
 
 const notas: Record<RecursoConfiguracion, string> = {
   tarifas: 'La tarifa nocturna debe ser menor que la diurna. Ambos valores en 0 indican gratuidad.',
-  franja: 'El inicio está incluido y el fin excluido. Por ejemplo, de 6 a 18: la franja diurna empieza a las 06:00 y termina al llegar a las 18:00. La nocturna cubre el resto del día.',
+  franja: 'La hora de inicio está incluida y la hora de fin es exclusiva. De 06:00 a 18:00, la franja diurna cubre de 06:00 a 17:59.',
   cupos: 'Define el máximo admitido por tipo. Estos valores representan capacidad configurada, no la ocupación actual del parqueadero.',
   umbral: 'Una lectura por debajo de este valor requiere validación. La configuración se guarda con precisión de dos decimales.',
 };
@@ -66,6 +67,27 @@ function tarifasParaGuardar(valores: Valores): TarifaConfigurada[] {
   });
 }
 
+function valoresFranja({ inicioHora, finHora }: Horario): Valores {
+  return { inicioHora: String(inicioHora), finHora: String(finHora) };
+}
+
+function horarioParaGuardar(valores: Valores): Horario {
+  const inicioHora = leerEntero(valores.inicioHora, 0, 23);
+  const finHora = leerEntero(valores.finHora, 1, 24);
+
+  if (inicioHora === null) {
+    throw new ErrorValidacionConfiguracion('Ingresa una hora de inicio entera entre 0 y 23.');
+  }
+  if (finHora === null) {
+    throw new ErrorValidacionConfiguracion('Ingresa una hora de fin entera entre 1 y 24.');
+  }
+  if (inicioHora >= finHora) {
+    throw new ErrorValidacionConfiguracion('La hora de inicio debe ser menor que la hora de fin.');
+  }
+
+  return { inicioHora, finHora };
+}
+
 async function cargarValores(recurso: RecursoConfiguracion): Promise<Valores> {
   if (recurso === 'cupos') {
     const { cupos } = await consultarCupos();
@@ -74,9 +96,7 @@ async function cargarValores(recurso: RecursoConfiguracion): Promise<Valores> {
   if (recurso === 'umbral') return { umbral: String((await consultarUmbral()).umbral) };
 
   const datos = await consultarTarifas();
-  if (recurso === 'franja') {
-    return { inicioHora: String(datos.franja.inicioHora), finHora: String(datos.franja.finHora) };
-  }
+  if (recurso === 'franja') return valoresFranja(datos.franja);
   return valoresTarifas(datos.tarifas);
 }
 
@@ -90,6 +110,9 @@ async function persistir(recurso: RecursoConfiguracion, valores: Valores, origin
     const { tarifas } = await guardarTarifas(cambios);
     return valoresTarifas(tarifas);
   }
+  if (recurso === 'franja') {
+    return valoresFranja(await guardarFranja(horarioParaGuardar(valores)));
+  }
 
   if (Object.values(valores).some((v) => !v?.trim() || !Number.isFinite(Number(v)))) {
     throw new ErrorValidacionConfiguracion('Completa todos los campos con valores numéricos.');
@@ -100,17 +123,7 @@ async function persistir(recurso: RecursoConfiguracion, valores: Valores, origin
     );
     return Object.fromEntries(cupos.map(({ tipoVehiculo, maximo }) => [tipoVehiculo, String(maximo)]));
   }
-  if (recurso === 'umbral') {
-    return { umbral: String((await guardarUmbral(Number(valores.umbral))).umbral) };
-  }
-
-  const inicioHora = Number(valores.inicioHora);
-  const finHora = Number(valores.finHora);
-  if (inicioHora >= finHora) {
-    throw new ErrorValidacionConfiguracion('La hora de inicio debe ser menor que la hora de fin.');
-  }
-  const datos = await guardarFranja({ inicioHora, finHora });
-  return { inicioHora: String(datos.inicioHora), finHora: String(datos.finHora) };
+  return { umbral: String((await guardarUmbral(Number(valores.umbral))).umbral) };
 }
 
 interface PropsFormulario {
@@ -218,7 +231,12 @@ export function FormularioConfiguracion({ recurso, onDirtyChange, onSavingChange
   }
 
   return (
-    <form className="form-config" onSubmit={guardar} aria-busy={guardando} noValidate={recurso === 'tarifas'}>
+    <form
+      className="form-config"
+      onSubmit={guardar}
+      aria-busy={guardando}
+      noValidate={recurso === 'tarifas' || recurso === 'franja'}
+    >
       {error && <Alerta tono="peligro">{error}</Alerta>}
       {mensaje && <Alerta tono="exito">{mensaje}</Alerta>}
       <fieldset disabled={guardando}>
