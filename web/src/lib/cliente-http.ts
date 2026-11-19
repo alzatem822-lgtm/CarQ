@@ -21,7 +21,11 @@ export async function peticion<T>(
   if (opciones.body) headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const respuesta = await fetch(`${URL_API}${ruta}`, { ...opciones, headers });
+  const respuesta = await fetch(`${URL_API}${ruta}`, {
+    ...opciones,
+    headers,
+    signal: opciones.signal ?? AbortSignal.timeout(20000),
+  });
 
   // Un 401 con sesión activa significa token vencido o inválido.
   // Sin token (por ejemplo, contraseña mala en el login) no se redirige.

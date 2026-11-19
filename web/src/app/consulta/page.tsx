@@ -1,27 +1,2 @@
-import { Tabla, type Columna } from '@/componentes/interfaz/Tabla';
-import { InsigniaEstado } from '@/componentes/interfaz/InsigniaEstado';
-import type { ClaveEstado } from '@/componentes/interfaz/estados';
-
-interface FilaCobro {
-  placa: string;
-  estado: ClaveEstado;
-}
-
-const COLUMNAS: Columna<FilaCobro>[] = [
-  { encabezado: 'Placa', celda: (fila) => fila.placa },
-  { encabezado: 'Estado', celda: (fila) => <InsigniaEstado estado={fila.estado} /> },
-];
-
-export default function ConsultaPage() {
-  return (
-    <>
-      <h1>Consulta</h1>
-      <Tabla
-        columnas={COLUMNAS}
-        filas={[]}
-        clave={(fila) => fila.placa}
-        mensajeVacio="Sin cobros registrados"
-      />
-    </>
-  );
-}
+import { PantallaPendiente } from '@/componentes/PantallaPendiente';
+export default function ConsultaPage() { return <PantallaPendiente titulo="Consulta de cobros" descripcion="El espacio para encontrar y revisar los registros del parqueadero." icono="consulta" pasos={['Buscar por placa y rango de fechas.', 'Filtrar los registros por estado.', 'Consultar la tarifa aplicada y el resultado.', 'Revisar los datos de cada operación.']} />; }

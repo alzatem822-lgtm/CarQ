@@ -1,14 +1,2 @@
-import { Alerta } from '@/componentes/interfaz/Alerta';
-import { CampoFormulario } from '@/componentes/interfaz/CampoFormulario';
-import { InsigniaEstado } from '@/componentes/interfaz/InsigniaEstado';
-
-export default function CajaPage() {
-  return (
-    <>
-      <h1>Caja</h1>
-      <CampoFormulario etiqueta="Placa" name="placa" />
-      <InsigniaEstado estado="cobroPendiente" />
-      <Alerta>Busque una placa para ver su cobro.</Alerta>
-    </>
-  );
-}
+import { PantallaPendiente } from '@/componentes/PantallaPendiente';
+export default function CajaPage() { return <PantallaPendiente titulo="Atención en caja" descripcion="El espacio para consultar cobros pendientes y registrar pagos." icono="caja" pasos={['Buscar los cobros pendientes por placa.', 'Revisar el detalle y la tarifa aplicada.', 'Registrar el pago en efectivo con una referencia única.', 'Confirmar el pago y actualizar su estado.']} />; }

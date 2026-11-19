@@ -2,8 +2,8 @@ import { peticion } from './cliente-http';
 import type { RolSesion, Sesion } from './sesion';
 
 export const RUTA_INICIAL: Record<RolSesion, string> = {
-  ADMINISTRADOR: '/administracion',
-  OPERADOR: '/carril',
+  ADMINISTRADOR: '/inicio',
+  OPERADOR: '/inicio',
 };
 
 export function iniciarSesion(
