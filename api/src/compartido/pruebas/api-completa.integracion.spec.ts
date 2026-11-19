@@ -505,6 +505,48 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     }
   });
 
+  it('consulta presencia, barrera y último resultado sin caché en menos de un segundo local', async () => {
+    const estado = app!.get(EstadoCarrilStore);
+    const actual = {
+      ...estadoCarrilInicial(),
+      vehiculoPresente: true,
+      ultimoResultado: { resultado: 'RECHAZADO' as const, motivo: 'LLENO' },
+      barrera: { estado: 'CERRADA' as const, motivo: 'LLENO' },
+    };
+    await estado.guardar(actual);
+    try {
+      const duraciones: number[] = [];
+      for (let intento = 0; intento < 5; intento++) {
+        const inicio = performance.now();
+        await request(servidor())
+          .get('/carril/estado')
+          .set('Authorization', `Bearer ${tokenOperador}`)
+          .expect('Cache-Control', 'no-store')
+          .expect(200, actual);
+        duraciones.push(performance.now() - inicio);
+      }
+      const maximo = Math.max(...duraciones);
+      console.info(
+        `CARQ-142: máximo local de 5 consultas = ${maximo.toFixed(2)} ms`,
+      );
+      expect(maximo).toBeLessThan(1000);
+      expect(await estado.obtener()).toEqual(actual);
+      await request(servidor()).get('/carril/estado').set(admin()).expect(403);
+      await request(servidor()).get('/carril/estado').expect(401);
+      const vencido = jwt.sign(
+        { sub: 'operador', rol: 'OPERADOR' },
+        SECRETO_PRUEBA,
+        { expiresIn: -1 },
+      );
+      await request(servidor())
+        .get('/carril/estado')
+        .set('Authorization', `Bearer ${vencido}`)
+        .expect(401);
+    } finally {
+      await estado.guardar(estadoCarrilInicial());
+    }
+  });
+
   it('sirve Swagger y refleja todas las rutas de la aplicación real', async () => {
     const r = await request(servidor()).get('/docs-json');
     expect(r.status).toBe(200);
@@ -514,6 +556,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       'get /cobros/pendientes',
       'post /pagos/efectivo',
       'get /carril/ocupacion',
+      'get /carril/estado',
       'post /carril/simulacion/llegada',
       ...operaciones.map((o) => `${o.metodo} ${o.ruta}`),
     ].sort();

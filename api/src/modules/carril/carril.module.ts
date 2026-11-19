@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConsultarEstadoCarril } from './aplicacion/consultar-estado-carril';
+import { EstadoCarrilController } from './adaptadores-entrada/estado-carril.controller';
 import { DataSource } from 'typeorm';
 import { ConfiguracionSistema } from '../../compartido/configuracion/configuracion-sistema';
 import { BarreraCarril } from './aplicacion/barrera-carril';
@@ -20,8 +22,14 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
 
 @Module({
   imports: [ConfiguracionModule, AccesoModule],
-  controllers: [OcupacionController],
+  controllers: [OcupacionController, EstadoCarrilController],
   providers: [
+    {
+      provide: ConsultarEstadoCarril,
+      useFactory: (estado: EstadoCarrilStore) =>
+        new ConsultarEstadoCarril(estado),
+      inject: [EstadoCarrilStore],
+    },
     {
       provide: SensorPresencia,
       useFactory: (config: ConfiguracionSistema, estado: EstadoCarrilStore) =>
