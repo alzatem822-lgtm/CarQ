@@ -1,20 +1,67 @@
 import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ConfiguracionSistema } from '../../compartido/configuracion/configuracion-sistema';
+import { Reloj } from '../../compartido/reloj/reloj';
+import { RelojSistema } from '../../compartido/reloj/reloj-sistema';
+import { AccesoModule } from '../acceso/acceso.module';
+import { obtenerIdSedePrincipal } from '../configuracion/infraestructura/sede-principal';
 import { DiaOperativo } from '../../compartido/tiempo/dia-operativo';
 import { FranjaRepository } from '../configuracion/aplicacion/franja.repository';
 import { TarifaRepository } from '../configuracion/aplicacion/tarifa.repository';
 import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { ResolverFranja } from '../configuracion/dominio/resolver-franja';
 import { CobroRepository } from './aplicacion/cobro.repository';
+import { PagoRepository } from './aplicacion/pago.repository';
+import { RegistrarPagoEfectivo } from './aplicacion/registrar-pago-efectivo';
+import { TransaccionPago } from './aplicacion/transaccion-pago';
+import { PagoPostgresRepository } from './infraestructura/pago-postgres.repository';
+import { TransaccionPagoPostgres } from './infraestructura/transaccion-pago-postgres';
+import { BuscarCobroPendientePorPlaca } from './aplicacion/buscar-cobro-pendiente-por-placa';
+import {
+  CajaController,
+  SEDE_CAJA,
+} from './adaptadores-entrada/caja.controller';
 import { GenerarCobro } from './aplicacion/generar-cobro';
 import { RegistroEstrategiasTarifa } from './dominio/estrategia-tarifa';
 import { tarifaCarro, tarifaMoto } from './dominio/tarifa-por-franja';
 import { CobroPostgresRepository } from './infraestructura/cobro-postgres.repository';
 
 @Module({
-  imports: [ConfiguracionModule],
+  imports: [AccesoModule, ConfiguracionModule],
+  controllers: [CajaController],
   providers: [
+    {
+      provide: PagoRepository,
+      useFactory: (origen: DataSource) => new PagoPostgresRepository(origen),
+      inject: [DataSource],
+    },
+    {
+      provide: TransaccionPago,
+      useFactory: (origen: DataSource) => new TransaccionPagoPostgres(origen),
+      inject: [DataSource],
+    },
+    {
+      provide: RegistrarPagoEfectivo,
+      useFactory: (
+        transaccion: TransaccionPago,
+        reloj: Reloj,
+        pagos: PagoRepository,
+      ) => new RegistrarPagoEfectivo(transaccion, reloj, pagos),
+      inject: [TransaccionPago, Reloj, PagoRepository],
+    },
+    { provide: Reloj, useClass: RelojSistema },
+    {
+      provide: SEDE_CAJA,
+      useFactory: (origen: DataSource) => async () =>
+        Number(await obtenerIdSedePrincipal(origen)),
+      inject: [DataSource],
+    },
+    {
+      provide: BuscarCobroPendientePorPlaca,
+      useFactory: (cobros: CobroRepository, dias: DiaOperativo, reloj: Reloj) =>
+        new BuscarCobroPendientePorPlaca(cobros, dias, reloj),
+      inject: [CobroRepository, DiaOperativo, Reloj],
+    },
     {
       provide: DiaOperativo,
       useFactory: (config: ConfiguracionSistema) =>

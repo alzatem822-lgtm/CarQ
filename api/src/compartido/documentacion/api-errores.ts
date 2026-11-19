@@ -13,6 +13,7 @@ export function ApiErrores({
   protegido = true,
   cuerpo = false,
   dominio = false,
+  rol = 'ADMINISTRADOR',
 } = {}) {
   return applyDecorators(
     ApiInternalServerErrorResponse({
@@ -27,8 +28,7 @@ export function ApiErrores({
           }),
           ApiForbiddenResponse({
             type: RespuestaErrorDto,
-            description:
-              'El usuario está autenticado pero no tiene rol ADMINISTRADOR.',
+            description: `El usuario está autenticado pero no tiene rol ${rol}.`,
           }),
         ]
       : []),
@@ -37,7 +37,7 @@ export function ApiErrores({
           ApiBadRequestResponse({
             type: RespuestaErrorDto,
             description:
-              'Cuerpo inválido, incompleto, con tipos incorrectos, duplicados o campos adicionales. No se modifica la configuración.',
+              'Cuerpo inválido, incompleto, con tipos incorrectos, duplicados o campos adicionales.',
           }),
         ]
       : []),
@@ -45,8 +45,7 @@ export function ApiErrores({
       ? [
           ApiUnprocessableEntityResponse({
             type: RespuestaErrorDto,
-            description:
-              'Se incumple una regla de dominio. No se modifica la configuración.',
+            description: 'Se incumple una regla de dominio.',
           }),
         ]
       : []),
