@@ -11,6 +11,11 @@ import { TarifaRepository } from '../configuracion/aplicacion/tarifa.repository'
 import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { ResolverFranja } from '../configuracion/dominio/resolver-franja';
 import { CobroRepository } from './aplicacion/cobro.repository';
+import { PagoRepository } from './aplicacion/pago.repository';
+import { RegistrarPagoEfectivo } from './aplicacion/registrar-pago-efectivo';
+import { TransaccionPago } from './aplicacion/transaccion-pago';
+import { PagoPostgresRepository } from './infraestructura/pago-postgres.repository';
+import { TransaccionPagoPostgres } from './infraestructura/transaccion-pago-postgres';
 import { BuscarCobroPendientePorPlaca } from './aplicacion/buscar-cobro-pendiente-por-placa';
 import {
   CajaController,
@@ -25,6 +30,25 @@ import { CobroPostgresRepository } from './infraestructura/cobro-postgres.reposi
   imports: [AccesoModule, ConfiguracionModule],
   controllers: [CajaController],
   providers: [
+    {
+      provide: PagoRepository,
+      useFactory: (origen: DataSource) => new PagoPostgresRepository(origen),
+      inject: [DataSource],
+    },
+    {
+      provide: TransaccionPago,
+      useFactory: (origen: DataSource) => new TransaccionPagoPostgres(origen),
+      inject: [DataSource],
+    },
+    {
+      provide: RegistrarPagoEfectivo,
+      useFactory: (
+        transaccion: TransaccionPago,
+        reloj: Reloj,
+        pagos: PagoRepository,
+      ) => new RegistrarPagoEfectivo(transaccion, reloj, pagos),
+      inject: [TransaccionPago, Reloj, PagoRepository],
+    },
     { provide: Reloj, useClass: RelojSistema },
     {
       provide: SEDE_CAJA,

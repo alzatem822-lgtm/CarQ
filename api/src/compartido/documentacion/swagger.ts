@@ -6,7 +6,7 @@ export function crearDocumentoOpenApi(app: INestApplication) {
     .setTitle('CarQ · API de parqueadero')
     .setVersion('0.0.1')
     .setDescription(
-      'API implementada de autenticación y configuración para una sede.\n\n**Recorrido:** ejecuta POST /auth/login, copia `token` y pégalo en **Authorize** sin escribir el prefijo Bearer. Después consulta o actualiza la configuración con una cuenta ADMINISTRADOR. Un OPERADOR puede iniciar sesión pero recibe 403 en configuración.\n\nLos errores usan `{codigo,motivo}`. Los valores enviados en PUT se guardan realmente en la base configurada. Las tarifas se expresan en pesos colombianos enteros. Carril, cobros, pagos y consulta operativa todavía no tienen endpoints publicados.',
+      'API de autenticación, configuración y Caja para una sede.\n\n**Recorrido:** ejecuta POST /auth/login y pega el token en **Authorize**. La configuración requiere ADMINISTRADOR. El rol OPERADOR puede buscar cobros pendientes y registrar pagos en Caja.\n\nLos errores usan `{codigo,motivo}` y los importes se expresan en pesos colombianos enteros.',
     )
     .addTag('Autenticación', 'Inicio de sesión y emisión del token JWT.')
     .addTag('Caja', 'Consulta de cobros y registro de pagos para operadores.')
@@ -38,6 +38,8 @@ export function crearDocumentoOpenApi(app: INestApplication) {
     'ActualizarTarifasDto',
     'TarifaDto',
     'ActualizarFranjaDto',
+    'BuscarPendientesDto',
+    'PagoEfectivoDto',
   ]) {
     const esquema = documento.components?.schemas?.[nombre];
     if (esquema && !('$ref' in esquema)) esquema.additionalProperties = false;
