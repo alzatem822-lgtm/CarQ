@@ -1,4 +1,5 @@
 import { DiaOperativo } from '../../../compartido/tiempo/dia-operativo';
+import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 import { FranjaRepository } from '../../configuracion/aplicacion/franja.repository';
 import { TarifaRepository } from '../../configuracion/aplicacion/tarifa.repository';
 import { ResolverFranja } from '../../configuracion/dominio/resolver-franja';
@@ -51,15 +52,26 @@ export class GenerarCobro {
     );
     if (tarifaAplicada === 0) return null;
 
-    return this.cobros.guardar(
-      Cobro.crear({
-        placa,
-        tipoVehiculo,
-        sedeId,
-        diaOperativo,
-        franja,
-        tarifaAplicada,
-      }),
-    );
+    const nuevo = Cobro.crear({
+      placa,
+      tipoVehiculo,
+      sedeId,
+      diaOperativo,
+      franja,
+      tarifaAplicada,
+    });
+    try {
+      return await this.cobros.guardar(nuevo);
+    } catch (error) {
+      if (error instanceof ErrorDominio && error.codigo === 'COBRO_DUPLICADO') {
+        const ganador = await this.cobros.buscarPorPlacaYDia(
+          placa,
+          sedeId,
+          diaOperativo,
+        );
+        if (ganador) return ganador;
+      }
+      throw error;
+    }
   }
 }
