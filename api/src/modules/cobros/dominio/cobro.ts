@@ -2,8 +2,7 @@ import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 import { TipoFranja } from '../../configuracion/dominio/franja';
 import { Placa } from '../../vehiculos/dominio/placa';
 import { TipoVehiculo } from '../../vehiculos/dominio/tipo-vehiculo';
-
-export type CodigoEstadoCobro = 'PENDIENTE' | 'PAGADO' | 'ANULADO';
+import { CodigoEstadoCobro, estadoDeCobro } from './estado-cobro';
 
 export interface DatosCobro {
   id: number | null;
@@ -53,6 +52,27 @@ export class Cobro {
       );
     }
     return new Cobro({ ...datos });
+  }
+
+  transicionar(
+    destino: CodigoEstadoCobro,
+    anulacion?: { usuario: string; motivo: string },
+  ): Cobro {
+    const estado = estadoDeCobro(this.estado).transicionar(destino);
+    const anuladoPor = anulacion?.usuario.trim();
+    const motivo = anulacion?.motivo.trim();
+    if (estado === 'ANULADO' && (!anuladoPor || !motivo)) {
+      throw new ErrorDominio(
+        'ANULACION_INVALIDA',
+        'La anulación requiere usuario y motivo.',
+      );
+    }
+    return Cobro.reconstruir({
+      ...this.datos,
+      estado,
+      anuladoPor: estado === 'ANULADO' ? (anuladoPor ?? null) : null,
+      motivoAnulacion: estado === 'ANULADO' ? (motivo ?? null) : null,
+    });
   }
 
   get id() {

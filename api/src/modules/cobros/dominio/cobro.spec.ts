@@ -25,4 +25,22 @@ describe('Cobro', () => {
     expect(cobro.estado).toBe('PENDIENTE');
     expect(cobro.motivoAnulacion).toBeNull();
   });
+
+  it('permite pagar un pendiente y rechaza devolverlo a pendiente', () => {
+    const pagado = nuevo().transicionar('PAGADO');
+    expect(pagado.estado).toBe('PAGADO');
+    expect(pagado.tarifaAplicada).toBe(5000);
+    expect(() => pagado.transicionar('PENDIENTE')).toThrow('pendiente');
+  });
+
+  it('conserva la auditoría de anulación y rechaza pagar ese cobro', () => {
+    const anulado = nuevo().transicionar('ANULADO', {
+      usuario: 'admin',
+      motivo: 'Corrección',
+    });
+    expect(anulado.estado).toBe('ANULADO');
+    expect(anulado.anuladoPor).toBe('admin');
+    expect(anulado.motivoAnulacion).toBe('Corrección');
+    expect(() => anulado.transicionar('PAGADO')).toThrow('pendiente');
+  });
 });
