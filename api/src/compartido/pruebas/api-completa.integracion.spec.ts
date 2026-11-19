@@ -424,6 +424,63 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     expect(r.status).toBe(200);
     expect(r.body.umbral).toBe(umbral);
   });
+  it('devuelve al operador ocupación y máximos sin contar estancias cerradas', async () => {
+    const [carril]: { id: number; sede_id: number }[] = await db!.query(
+      'SELECT id, sede_id FROM carril ORDER BY sede_id, id LIMIT 1',
+    );
+    const filas: { id: number }[] = await db!.query(
+      `INSERT INTO estancia (placa, sede_id, carril_id, tipo_vehiculo, ingreso_en, salida_en)
+       VALUES ('XYZ123', $1, $2, 'CARRO', '2026-11-19T12:00:00Z', NULL),
+              ('XYZ12A', $1, $2, 'MOTO', '2026-11-19T12:00:00Z', NULL),
+              ('XYZ456', $1, $2, 'CARRO', '2026-11-19T12:00:00Z', '2026-11-19T13:00:00Z')
+       RETURNING id`,
+      [carril.sede_id, carril.id],
+    );
+    try {
+      const respuesta = await request(servidor())
+        .get('/carril/ocupacion')
+        .set('Authorization', `Bearer ${tokenOperador}`)
+        .expect('Cache-Control', 'no-store')
+        .expect(200);
+      expect(respuesta.body).toEqual({
+        cupos: [
+          { tipoVehiculo: 'CARRO', ocupacion: 1, maximo: 3 },
+          { tipoVehiculo: 'MOTO', ocupacion: 1, maximo: 5 },
+        ],
+      });
+    } finally {
+      await db!.query('DELETE FROM estancia WHERE id = ANY($1::int[])', [
+        filas.map((fila) => fila.id),
+      ]);
+    }
+  });
+
+  it('protege ocupación ante token ausente, inválido, vencido y rol administrador', async () => {
+    const vencido = jwt.sign(
+      { sub: 'operador', rol: 'OPERADOR' },
+      SECRETO_PRUEBA,
+      { expiresIn: -1 },
+    );
+    for (const token of [undefined, 'invalido', vencido]) {
+      const solicitud = request(servidor()).get('/carril/ocupacion');
+      if (token) solicitud.set('Authorization', `Bearer ${token}`);
+      const respuesta = await solicitud;
+      expect(respuesta.status).toBe(401);
+      expect(respuesta.body).toEqual({
+        codigo: 'UNAUTHORIZED',
+        motivo: expect.any(String),
+      });
+    }
+    const respuesta = await request(servidor())
+      .get('/carril/ocupacion')
+      .set(admin());
+    expect(respuesta.status).toBe(403);
+    expect(respuesta.body).toEqual({
+      codigo: 'FORBIDDEN',
+      motivo: expect.any(String),
+    });
+  });
+
   it('sirve Swagger y refleja todas las rutas de la aplicación real', async () => {
     const r = await request(servidor()).get('/docs-json');
     expect(r.status).toBe(200);
@@ -432,6 +489,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       'get /auth/sesion',
       'get /cobros/pendientes',
       'post /pagos/efectivo',
+      'get /carril/ocupacion',
       ...operaciones.map((o) => `${o.metodo} ${o.ruta}`),
     ].sort();
     const documentadas = Object.entries(r.body.paths)
@@ -442,6 +500,21 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       )
       .sort();
     expect(documentadas).toEqual(esperadas);
+    expect(r.body.paths['/carril/ocupacion'].get).toMatchObject({
+      operationId: 'consultarOcupacion',
+      security: [{ sesion: [] }],
+      responses: {
+        '200': {
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/OcupacionRespuestaDto' },
+            },
+          },
+        },
+        '401': expect.any(Object),
+        '403': expect.any(Object),
+      },
+    });
     expect((await request(servidor()).get('/docs/')).status).toBe(200);
   });
   it('permite CORS del frontend configurado y no concede permiso a otro origen', async () => {
