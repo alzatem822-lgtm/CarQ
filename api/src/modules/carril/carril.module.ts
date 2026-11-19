@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { ConfiguracionSistema } from '../../compartido/configuracion/configuracion-sistema';
+import { BarreraCarril } from './aplicacion/barrera-carril';
+import { SensorPresencia } from './aplicacion/sensor-presencia';
+import { crearBarreraCarril } from './infraestructura/fabrica-barrera-carril';
+import { crearSensorPresencia } from './infraestructura/fabrica-sensor-presencia';
 import { AccesoModule } from '../acceso/acceso.module';
 import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { CupoRepository } from '../configuracion/aplicacion/cupo.repository';
@@ -17,6 +22,18 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
   imports: [ConfiguracionModule, AccesoModule],
   controllers: [OcupacionController],
   providers: [
+    {
+      provide: SensorPresencia,
+      useFactory: (config: ConfiguracionSistema, estado: EstadoCarrilStore) =>
+        crearSensorPresencia(config.obtener('FUENTE_SENSOR'), estado),
+      inject: [ConfiguracionSistema, EstadoCarrilStore],
+    },
+    {
+      provide: BarreraCarril,
+      useFactory: (config: ConfiguracionSistema, estado: EstadoCarrilStore) =>
+        crearBarreraCarril(config.obtener('CONTROLADOR_BARRERA'), estado),
+      inject: [ConfiguracionSistema, EstadoCarrilStore],
+    },
     {
       provide: 'ResolverSedeCarril',
       useFactory: (origen: DataSource) => async () =>
@@ -42,6 +59,11 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
       inject: [DataSource],
     },
   ],
-  exports: [EstadoCarrilStore, ConsultarOcupacion],
+  exports: [
+    EstadoCarrilStore,
+    ConsultarOcupacion,
+    SensorPresencia,
+    BarreraCarril,
+  ],
 })
 export class CarrilModule {}
