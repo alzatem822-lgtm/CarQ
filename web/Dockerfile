@@ -6,6 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+ENV CARQ_STANDALONE=1
 RUN npm run build
 
 # ---- runtime ----
