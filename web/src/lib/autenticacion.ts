@@ -15,3 +15,10 @@ export function iniciarSesion(
     body: JSON.stringify({ nombre, contrasena }),
   });
 }
+
+export function verificarSesion(signal: AbortSignal): Promise<{ rol: RolSesion }> {
+  return peticion('/auth/sesion', {
+    cache: 'no-store',
+    signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
+  });
+}

@@ -7,11 +7,14 @@ import {
   CredencialesInvalidas,
   IniciarSesion,
 } from '../aplicacion/iniciar-sesion';
+import { EmisorTokens } from '../aplicacion/emisor-tokens';
 import { Rol } from '../dominio/rol';
+import { EmisorJwt } from '../infraestructura/emisor-jwt';
 import { AuthController } from './auth.controller';
 
-describe('POST /auth/login', () => {
+describe('Autenticación HTTP', () => {
   let app: INestApplication;
+  const emisor = new EmisorJwt('clave-solo-para-estas-pruebas', '5m');
 
   const iniciarSesionFalso = {
     ejecutar: async (nombre: string, contrasena: string) => {
@@ -25,7 +28,10 @@ describe('POST /auth/login', () => {
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: IniciarSesion, useValue: iniciarSesionFalso }],
+      providers: [
+        { provide: IniciarSesion, useValue: iniciarSesionFalso },
+        { provide: EmisorTokens, useValue: emisor },
+      ],
     }).compile();
     app = modulo.createNestApplication();
     app.useGlobalFilters(new FiltroExcepciones());
@@ -76,5 +82,28 @@ describe('POST /auth/login', () => {
       .send({ nombre: 'admin' });
 
     expect(respuesta.status).toBe(400);
+  });
+
+  it.each([Rol.ADMINISTRADOR, Rol.OPERADOR])(
+    'GET /auth/sesion devuelve el rol del JWT verificado',
+    async (rol) => {
+      const token = await emisor.emitir({ nombre: 'usuario', rol });
+      await request(app.getHttpServer())
+        .get('/auth/sesion')
+        .set('Authorization', `Bearer ${token}`)
+        .expect('Cache-Control', 'no-store')
+        .expect(200, { rol: rol.codigo });
+    },
+  );
+
+  it('GET /auth/sesion rechaza un JWT ausente, inválido o vencido', async () => {
+    const consultar = () => request(app.getHttpServer()).get('/auth/sesion');
+    const vencido = await new EmisorJwt(
+      'clave-solo-para-estas-pruebas',
+      '-1s',
+    ).emitir({ nombre: 'usuario', rol: Rol.OPERADOR });
+    await consultar().expect(401);
+    await consultar().set('Authorization', 'Bearer invalido').expect(401);
+    await consultar().set('Authorization', `Bearer ${vencido}`).expect(401);
   });
 });

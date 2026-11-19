@@ -14,10 +14,12 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        <Navegacion />
-        <main id="contenido" className="contenido-app">
-          <GuardiaDeRutas>{children}</GuardiaDeRutas>
-        </main>
+        <GuardiaDeRutas>
+          <Navegacion />
+          <main id="contenido" className="contenido-app">
+            {children}
+          </main>
+        </GuardiaDeRutas>
       </body>
     </html>
   );
