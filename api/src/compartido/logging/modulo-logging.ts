@@ -11,6 +11,12 @@ import { RUTAS_CENSURADAS, TEXTO_CENSURADO } from './rutas-censuradas';
         genReqId: (req) => generarIdPeticion(req.headers),
         timestamp: stdTimeFunctions.isoTime,
         formatters: { level: (etiqueta) => ({ level: etiqueta }) },
+        serializers: {
+          req: (req: { url?: string }) => {
+            const ruta = req.url?.split('?')[0];
+            return ruta === '/cobros/pendientes' ? { ...req, url: ruta } : req;
+          },
+        },
         redact: { paths: RUTAS_CENSURADAS, censor: TEXTO_CENSURADO },
       },
     }),

@@ -430,6 +430,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     const esperadas = [
       'post /auth/login',
       'get /auth/sesion',
+      'get /cobros/pendientes',
       ...operaciones.map((o) => `${o.metodo} ${o.ruta}`),
     ].sort();
     const documentadas = Object.entries(r.body.paths)

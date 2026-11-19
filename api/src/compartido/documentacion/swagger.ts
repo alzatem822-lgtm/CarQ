@@ -9,6 +9,7 @@ export function crearDocumentoOpenApi(app: INestApplication) {
       'API implementada de autenticación y configuración para una sede.\n\n**Recorrido:** ejecuta POST /auth/login, copia `token` y pégalo en **Authorize** sin escribir el prefijo Bearer. Después consulta o actualiza la configuración con una cuenta ADMINISTRADOR. Un OPERADOR puede iniciar sesión pero recibe 403 en configuración.\n\nLos errores usan `{codigo,motivo}`. Los valores enviados en PUT se guardan realmente en la base configurada. Las tarifas se expresan en pesos colombianos enteros. Carril, cobros, pagos y consulta operativa todavía no tienen endpoints publicados.',
     )
     .addTag('Autenticación', 'Inicio de sesión y emisión del token JWT.')
+    .addTag('Caja', 'Consulta de cobros y registro de pagos para operadores.')
     .addTag('Cupos', 'Capacidad máxima por tipo, no ocupación actual.')
     .addTag('Umbral', 'Confianza mínima configurada para las lecturas.')
     .addTag(

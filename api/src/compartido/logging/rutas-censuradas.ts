@@ -5,6 +5,7 @@ export const RUTAS_CENSURADAS = [
   'req.body.password',
   'req.body.contrasena',
   'req.body.token',
+  'req.query.placa',
 ];
 
 export const TEXTO_CENSURADO = '[CENSURADO]';

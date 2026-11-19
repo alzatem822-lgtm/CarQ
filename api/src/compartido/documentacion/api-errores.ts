@@ -13,6 +13,7 @@ export function ApiErrores({
   protegido = true,
   cuerpo = false,
   dominio = false,
+  rol = 'ADMINISTRADOR',
 } = {}) {
   return applyDecorators(
     ApiInternalServerErrorResponse({
@@ -27,8 +28,7 @@ export function ApiErrores({
           }),
           ApiForbiddenResponse({
             type: RespuestaErrorDto,
-            description:
-              'El usuario está autenticado pero no tiene rol ADMINISTRADOR.',
+            description: `El usuario está autenticado pero no tiene rol ${rol}.`,
           }),
         ]
       : []),
