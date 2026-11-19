@@ -4,9 +4,11 @@ import {
   limpiarBaseDatosPruebas,
 } from '../../../compartido/pruebas/base-datos-pruebas';
 import { RelojFijo } from '../../../compartido/reloj/reloj-fijo';
+import { DiaOperativo } from '../../../compartido/tiempo/dia-operativo';
 import { Placa } from '../../vehiculos/dominio/placa';
 import { TipoVehiculo } from '../../vehiculos/dominio/tipo-vehiculo';
 import { RegistrarPagoEfectivo } from '../aplicacion/registrar-pago-efectivo';
+import { GuardarPaseDePago } from '../aplicacion/guardar-pase-de-pago';
 import { Cobro } from '../dominio/cobro';
 import { CobroPostgresRepository } from './cobro-postgres.repository';
 import { PagoPostgresRepository } from './pago-postgres.repository';
@@ -17,19 +19,27 @@ describe('Pago en efectivo con PostgreSQL', () => {
   let registrar: RegistrarPagoEfectivo;
   let cobros: CobroPostgresRepository;
   let pagos: PagoPostgresRepository;
+  const guardarPase = jest.fn().mockResolvedValue(undefined);
 
   beforeAll(async () => {
     db = await iniciarBaseDatosPruebas();
     cobros = new CobroPostgresRepository(db);
     pagos = new PagoPostgresRepository(db);
+    const reloj = new RelojFijo(new Date('2026-11-19T15:00Z'));
     registrar = new RegistrarPagoEfectivo(
       new TransaccionPagoPostgres(db),
-      new RelojFijo(new Date('2026-11-19T15:00Z')),
+      reloj,
       pagos,
+      new GuardarPaseDePago(
+        { guardar: guardarPase, consultar: jest.fn() },
+        new DiaOperativo(),
+        reloj,
+      ),
     );
   }, 30000);
 
   beforeEach(async () => {
+    guardarPase.mockClear();
     await limpiarBaseDatosPruebas(db);
     await db.query("INSERT INTO sede (nombre) VALUES ('Sede de pruebas')");
     await db.query(
@@ -75,6 +85,13 @@ describe('Pago en efectivo con PostgreSQL', () => {
       'SELECT count(*)::int AS total FROM pago',
     );
     expect(filas[0].total).toBe(1);
+    expect(guardarPase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cobroId: solicitud.cobroId,
+        pagoId: a.pago.id,
+        venceEn: new Date('2026-11-20T11:00:00.000Z'),
+      }),
+    );
   });
 
   it('revierte el estado si falla la escritura del pago', async () => {
@@ -88,6 +105,7 @@ describe('Pago en efectivo con PostgreSQL', () => {
     await expect(
       pagos.buscarPorReferencia(solicitud.referencia),
     ).resolves.toBeNull();
+    expect(guardarPase).not.toHaveBeenCalled();
   });
 
   it('rechaza una referencia utilizada para otro cobro', async () => {

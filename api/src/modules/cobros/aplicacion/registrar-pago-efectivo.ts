@@ -3,6 +3,7 @@ import { Reloj } from '../../../compartido/reloj/reloj';
 import { Cobro } from '../dominio/cobro';
 import { normalizarReferenciaPago, Pago } from '../dominio/pago';
 import { PagoRepository } from './pago.repository';
+import { GuardarPaseDePago } from './guardar-pase-de-pago';
 import { TransaccionPago } from './transaccion-pago';
 
 export interface SolicitudPago {
@@ -22,12 +23,14 @@ export class RegistrarPagoEfectivo {
     private readonly transaccion: TransaccionPago,
     private readonly reloj: Reloj,
     private readonly pagos: PagoRepository,
+    private readonly guardarPase: GuardarPaseDePago,
   ) {}
 
   async ejecutar(solicitud: SolicitudPago): Promise<ResultadoPago> {
     const referencia = normalizarReferenciaPago(solicitud.referencia);
+    let resultado: ResultadoPago;
     try {
-      return await this.registrar(solicitud, referencia);
+      resultado = await this.registrar(solicitud, referencia);
     } catch (error) {
       if (!(error instanceof ErrorDominio) || error.codigo !== 'PAGO_DUPLICADO')
         throw error;
@@ -36,6 +39,8 @@ export class RegistrarPagoEfectivo {
         throw referenciaEnUso();
       throw error;
     }
+    await this.guardarPase.ejecutar(resultado.cobro, resultado.pago);
+    return resultado;
   }
 
   private registrar(

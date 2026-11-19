@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import type { Redis } from 'ioredis';
+import { CLIENTE_REDIS } from '../../compartido/redis/modulo-redis';
 import { ConfiguracionSistema } from '../../compartido/configuracion/configuracion-sistema';
 import { Reloj } from '../../compartido/reloj/reloj';
 import { RelojSistema } from '../../compartido/reloj/reloj-sistema';
@@ -12,6 +14,10 @@ import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { ResolverFranja } from '../configuracion/dominio/resolver-franja';
 import { CobroRepository } from './aplicacion/cobro.repository';
 import { PagoRepository } from './aplicacion/pago.repository';
+import { ConsultarPaseVigente } from './aplicacion/consultar-pase-vigente';
+import { GuardarPaseDePago } from './aplicacion/guardar-pase-de-pago';
+import { PaseVigenteRepository } from './aplicacion/pase-vigente.repository';
+import { PaseVigenteRedisRepository } from './infraestructura/pase-vigente-redis.repository';
 import { RegistrarPagoEfectivo } from './aplicacion/registrar-pago-efectivo';
 import { TransaccionPago } from './aplicacion/transaccion-pago';
 import { PagoPostgresRepository } from './infraestructura/pago-postgres.repository';
@@ -31,6 +37,31 @@ import { CobroPostgresRepository } from './infraestructura/cobro-postgres.reposi
   controllers: [CajaController],
   providers: [
     {
+      provide: PaseVigenteRepository,
+      useFactory: (redis: Redis, reloj: Reloj) =>
+        new PaseVigenteRedisRepository(redis, reloj),
+      inject: [CLIENTE_REDIS, Reloj],
+    },
+    {
+      provide: GuardarPaseDePago,
+      useFactory: (
+        pases: PaseVigenteRepository,
+        dias: DiaOperativo,
+        reloj: Reloj,
+      ) => new GuardarPaseDePago(pases, dias, reloj),
+      inject: [PaseVigenteRepository, DiaOperativo, Reloj],
+    },
+    {
+      provide: ConsultarPaseVigente,
+      useFactory: (
+        pases: PaseVigenteRepository,
+        cobros: CobroRepository,
+        dias: DiaOperativo,
+        reloj: Reloj,
+      ) => new ConsultarPaseVigente(pases, cobros, dias, reloj),
+      inject: [PaseVigenteRepository, CobroRepository, DiaOperativo, Reloj],
+    },
+    {
       provide: PagoRepository,
       useFactory: (origen: DataSource) => new PagoPostgresRepository(origen),
       inject: [DataSource],
@@ -46,8 +77,9 @@ import { CobroPostgresRepository } from './infraestructura/cobro-postgres.reposi
         transaccion: TransaccionPago,
         reloj: Reloj,
         pagos: PagoRepository,
-      ) => new RegistrarPagoEfectivo(transaccion, reloj, pagos),
-      inject: [TransaccionPago, Reloj, PagoRepository],
+        guardarPase: GuardarPaseDePago,
+      ) => new RegistrarPagoEfectivo(transaccion, reloj, pagos, guardarPase),
+      inject: [TransaccionPago, Reloj, PagoRepository, GuardarPaseDePago],
     },
     { provide: Reloj, useClass: RelojSistema },
     {
@@ -108,6 +140,6 @@ import { CobroPostgresRepository } from './infraestructura/cobro-postgres.reposi
       ],
     },
   ],
-  exports: [GenerarCobro, DiaOperativo, CobroRepository],
+  exports: [GenerarCobro, DiaOperativo, CobroRepository, ConsultarPaseVigente],
 })
 export class CobrosModule {}
