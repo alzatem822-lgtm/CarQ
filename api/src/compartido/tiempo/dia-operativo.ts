@@ -21,4 +21,17 @@ export class DiaOperativo {
     if (minutos < this.corteMinutos) local.setUTCDate(local.getUTCDate() - 1);
     return local.toISOString().slice(0, 10);
   }
+
+  fin(dia: string): Date {
+    const fecha = new Date(`${dia}T00:00:00.000Z`);
+    if (
+      !Number.isFinite(fecha.getTime()) ||
+      fecha.toISOString().slice(0, 10) !== dia
+    ) {
+      throw new Error('Día operativo inválido');
+    }
+    fecha.setUTCDate(fecha.getUTCDate() + 1);
+    fecha.setUTCMinutes(this.corteMinutos);
+    return this.horaLocal.aInstante(fecha);
+  }
 }
