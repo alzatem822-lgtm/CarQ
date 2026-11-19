@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsInt,
+  IsObject,
   IsNotEmpty,
   IsString,
   Min,
@@ -44,6 +45,7 @@ export class ActualizarCuposDto {
   })
   @IsArray({ message: 'Los cupos deben enviarse como una lista' })
   @ArrayMinSize(1, { message: 'Envía al menos un cupo' })
+  @IsObject({ each: true, message: 'Cada cupo debe ser un objeto' })
   @ValidateNested({ each: true })
   @Type(() => CupoDto)
   cupos!: CupoDto[];

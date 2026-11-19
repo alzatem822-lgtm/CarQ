@@ -36,7 +36,9 @@ describe('/configuracion/cupos', () => {
   };
   const actualizarCupoFalso = {
     ejecutarVarios: (pedidos: { tipo: TipoVehiculo; maximo: number }[]) => {
-      guardados.push(...pedidos.map(({ tipo, maximo }) => ({ tipo: tipo.codigo, maximo })));
+      guardados.push(
+        ...pedidos.map(({ tipo, maximo }) => ({ tipo: tipo.codigo, maximo })),
+      );
       return Promise.resolve();
     },
   };
@@ -142,6 +144,17 @@ describe('/configuracion/cupos', () => {
     });
 
     it.each([
+      ['un elemento nulo', null],
+      ['una lista anidada', []],
+      ['un elemento de texto', 'CARRO'],
+      [
+        'un máximo que excede INTEGER',
+        { tipoVehiculo: 'CARRO', maximo: 2147483648 },
+      ],
+      [
+        'campos extra dentro del cupo',
+        { tipoVehiculo: 'CARRO', maximo: 3, extra: true },
+      ],
       ['un máximo negativo', { tipoVehiculo: 'CARRO', maximo: -1 }],
       ['un máximo decimal', { tipoVehiculo: 'CARRO', maximo: 2.5 }],
       ['un máximo que no es número', { tipoVehiculo: 'CARRO', maximo: 'x' }],
