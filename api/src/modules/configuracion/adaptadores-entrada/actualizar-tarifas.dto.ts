@@ -6,6 +6,7 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsObject,
   Max,
   Min,
   ValidateNested,
@@ -42,32 +43,11 @@ export class ActualizarTarifasDto {
   })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayUnique((tarifa: TarifaDto) => `${tarifa.tipoVehiculo}:${tarifa.franja}`)
+  @IsObject({ each: true })
+  @ArrayUnique(
+    (tarifa: TarifaDto | null) => `${tarifa?.tipoVehiculo}:${tarifa?.franja}`,
+  )
   @ValidateNested({ each: true })
   @Type(() => TarifaDto)
   tarifas!: TarifaDto[];
-}
-export class ActualizarFranjaDto {
-  @ApiProperty({
-    type: 'integer',
-    minimum: 0,
-    maximum: 23,
-    example: 6,
-    description: 'Inicio inclusivo; debe ser menor que finHora.',
-  })
-  @IsInt()
-  @Min(0)
-  @Max(23)
-  inicioHora!: number;
-  @ApiProperty({
-    type: 'integer',
-    minimum: 1,
-    maximum: 24,
-    example: 18,
-    description: 'Fin exclusivo; 24 representa el final del día.',
-  })
-  @IsInt()
-  @Min(1)
-  @Max(24)
-  finHora!: number;
 }

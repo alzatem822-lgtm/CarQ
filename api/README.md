@@ -45,6 +45,7 @@ Swagger agrega la cabecera `Authorization: Bearer <token>`. No conserva el token
 | Método | Ruta | Acceso | Resultado |
 |---|---|---|---|
 | POST | `/auth/login` | Público | Token y rol |
+| GET | `/auth/sesion` | OPERADOR o ADMINISTRADOR | Rol verificado del JWT; `Cache-Control: no-store` |
 | GET | `/configuracion/cupos` | ADMINISTRADOR | Capacidad por tipo |
 | PUT | `/configuracion/cupos` | ADMINISTRADOR | Actualización atómica del lote |
 | GET | `/configuracion/umbral` | ADMINISTRADOR | Umbral vigente |
@@ -71,7 +72,7 @@ El umbral pertenece a `[0,1]` y PostgreSQL lo conserva con precisión de dos dec
 
 Las tarifas son COP enteros no negativos. Se exige nocturna menor que diurna, con la decisión del equipo de permitir gratuidad 0/0. Un PUT parcial se valida junto a los valores actuales. No se admiten pares tipo/franja repetidos.
 
-El horario usa horas enteras: inicio de 0 a 23 y fin de 1 a 24, con inicio menor que fin. El inicio es inclusivo y el fin exclusivo. `[6,18)` incluye las 06:00 y deja de ser diurno a las 18:00.
+El horario usa horas enteras: inicio de 0 a 23 y fin de 1 a 24, con inicio menor que fin. El inicio es inclusivo y el fin exclusivo. `[6,18)` incluye las 06:00 y deja de ser diurno a las 18:00. Los tipos incorrectos y campos adicionales responden 400; los enteros fuera de rango o un intervalo incoherente responden 422 con `FRANJA_INVALIDA`.
 
 ## Pruebas reproducibles
 

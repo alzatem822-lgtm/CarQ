@@ -1,6 +1,6 @@
 # Matriz de pruebas del backend
 
-Esta matriz corresponde a las ocho operaciones publicadas de autenticación y configuración. Una prueba satisfactoria acredita su escenario, no la ausencia de cualquier defecto posible.
+Esta matriz corresponde a las nueve operaciones publicadas de autenticación y configuración, incluida la consulta de sesión incorporada desde develop. Una prueba satisfactoria acredita su escenario, no la ausencia de cualquier defecto posible.
 
 ## Resultado de la verificación de esta entrega
 
@@ -19,9 +19,12 @@ La API Docker existente no se reconstruyó desde la sesión de trabajo porque el
 
 ## Cobertura por operación
 
+Verificación posterior a la integración de `origin/develop`, el 19 de noviembre de 2026: 226 pruebas generales del backend, 90 de integración y 4 del frontend aprobadas. El backend compila y su lint está aprobado. Los resultados de la tabla anterior corresponden a la entrega inicial del día 18.
+
 | Operación | Éxito | Validación y rechazo | Persistencia / contrato |
 |---|---|---|---|
 | POST `/auth/login` | Usuarios administrador y operador; JWT verificable | Credenciales incorrectas, cuerpo incompleto, vacío, tipos incorrectos y campos extra | Contraseñas verificadas con bcrypt contra PostgreSQL; respuesta sin credenciales |
+| GET `/auth/sesion` | Ambos roles con JWT verificado | Token ausente, inválido o vencido | Solo devuelve el rol, sin token nuevo; respuesta `Cache-Control: no-store` |
 | GET `/configuracion/cupos` | Lectura de cupos iniciales | Sin token, token inválido o vencido y operador | Valores de PostgreSQL; esquema OpenAPI |
 | PUT `/configuracion/cupos` | Lote válido y lectura posterior | Vacío, negativo, decimal, exceso de INTEGER, tipo desconocido o repetido; permisos | Rollback real si falla una escritura posterior; 500 sin detalle interno |
 | GET `/configuracion/umbral` | Umbral inicial | Sin token, token inválido o vencido y operador | Lectura de PostgreSQL; esquema OpenAPI |
@@ -35,8 +38,8 @@ Las suites de controladores y casos de uso complementan los escenarios de integr
 ## Documentación y configuración HTTP
 
 - Swagger UI en `/docs/`, sus archivos CSS/JS y los contratos `/docs-json` y `/docs-yaml` responden correctamente con Helmet activo.
-- Se verifican ocho operaciones documentadas, identificadores únicos y respuestas de éxito/error.
-- Login es público y las siete operaciones de configuración declaran JWT.
+- Se verifican nueve operaciones documentadas, identificadores únicos y respuestas de éxito/error.
+- Login es público; la consulta de sesión y las siete operaciones de configuración declaran JWT. La consulta de sesión admite ambos roles; la configuración exige ADMINISTRADOR.
 - Los esquemas anidados conservan límites, campos obligatorios y rechazo de propiedades adicionales.
 - La contraseña se documenta como dato de entrada; no aparece en el DTO de respuesta.
 - El token no se conserva al recargar Swagger y el contrato no se envía al validador público.

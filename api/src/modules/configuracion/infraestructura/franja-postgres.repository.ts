@@ -14,7 +14,8 @@ export class FranjaPostgresRepository implements FranjaRepository {
 
   async obtener(): Promise<Franja> {
     const filas: FilaFranja[] = await this.origen.query(
-      `SELECT inicio_hora, fin_hora FROM franja ORDER BY sede_id LIMIT 1`,
+      `SELECT inicio_hora, fin_hora FROM franja
+       WHERE sede_id = (SELECT id FROM sede ORDER BY id LIMIT 1)`,
     );
     if (filas.length === 0) {
       throw new Error('No hay una franja configurada');

@@ -9,10 +9,8 @@ import { ActualizarTarifas } from '../aplicacion/actualizar-tarifas';
 import { ConsultarConfiguracionTarifas } from '../aplicacion/consultar-configuracion-tarifas';
 import { FranjaRepository } from '../aplicacion/franja.repository';
 import { Tarifa } from '../dominio/tarifa';
-import {
-  ActualizarFranjaDto,
-  ActualizarTarifasDto,
-} from './actualizar-tarifas.dto';
+import { ActualizarFranjaDto } from './actualizar-franja.dto';
+import { ActualizarTarifasDto } from './actualizar-tarifas.dto';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -50,7 +48,11 @@ export class TarifasController {
   @ApiOkResponse({ type: TarifasRespuestaDto })
   @ApiErrores()
   async obtener() {
-    const datos = await this.consultar.ejecutar();
+    return this.consultarSede(await this.resolverSede());
+  }
+
+  private async consultarSede(sedeId: string) {
+    const datos = await this.consultar.ejecutar(sedeId);
     return {
       tarifas: datos.tarifas.map((t) => ({
         tipoVehiculo: t.tipoVehiculo.codigo,
@@ -85,7 +87,7 @@ export class TarifasController {
         ),
       ),
     );
-    return this.obtener();
+    return this.consultarSede(sede);
   }
   @Put('franja')
   @ApiOperation({

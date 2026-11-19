@@ -1,10 +1,14 @@
 import {
   Body,
   Controller,
+  Get,
+  Header,
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   CredencialesInvalidas,
@@ -12,6 +16,7 @@ import {
 } from '../aplicacion/iniciar-sesion';
 import { InicioSesionDto } from './inicio-sesion.dto';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiOkResponse,
   ApiOperation,
@@ -20,12 +25,43 @@ import {
 } from '@nestjs/swagger';
 import { ApiErrores } from '../../../compartido/documentacion/api-errores';
 import { RespuestaErrorDto } from '../../../compartido/documentacion/respuesta-error.dto';
-import { SesionRespuestaDto } from './sesion-respuesta.dto';
+import {
+  RolSesionRespuestaDto,
+  SesionRespuestaDto,
+} from './sesion-respuesta.dto';
+import {
+  GuardAutenticacionJwt,
+  type SolicitudAutenticada,
+} from './guard-autenticacion-jwt';
 
 @Controller('auth')
 @ApiTags('Autenticación')
 export class AuthController {
   constructor(private readonly iniciarSesion: IniciarSesion) {}
+
+  @Get('sesion')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(GuardAutenticacionJwt)
+  @ApiOperation({
+    operationId: 'consultarSesion',
+    summary: 'Consultar la sesión vigente',
+    description:
+      'Valida el JWT y devuelve el rol verificado. Disponible para OPERADOR y ADMINISTRADOR; respuesta no almacenable en caché.',
+  })
+  @ApiBearerAuth('sesion')
+  @ApiOkResponse({
+    type: RolSesionRespuestaDto,
+    description: 'Rol de la sesión autenticada. Cache-Control: no-store.',
+  })
+  @ApiUnauthorizedResponse({
+    type: RespuestaErrorDto,
+    description: 'Falta el token Bearer, es inválido o está vencido.',
+  })
+  @ApiErrores({ protegido: false })
+  consultarSesion(@Req() solicitud: SolicitudAutenticada) {
+    if (!solicitud.usuario) throw new UnauthorizedException();
+    return { rol: solicitud.usuario.rol.codigo };
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

@@ -117,6 +117,33 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       rol: 'ADMINISTRADOR',
     });
   });
+  it.each(['ADMINISTRADOR', 'OPERADOR'] as const)(
+    'consulta el rol de la sesión %s con JWT real y sin caché',
+    async (rol) => {
+      const token = rol === 'ADMINISTRADOR' ? tokenAdmin : tokenOperador;
+      await request(servidor())
+        .get('/auth/sesion')
+        .set('Authorization', `Bearer ${token}`)
+        .expect('Cache-Control', 'no-store')
+        .expect(200, { rol });
+    },
+  );
+
+  it('rechaza sesión ausente, inválida y vencida', async () => {
+    const vencido = jwt.sign(
+      { sub: 'administrador', rol: 'ADMINISTRADOR' },
+      SECRETO_PRUEBA,
+      { expiresIn: -1 },
+    );
+    for (const token of [undefined, 'invalido', vencido]) {
+      const solicitud = request(servidor()).get('/auth/sesion');
+      if (token) solicitud.set('Authorization', `Bearer ${token}`);
+      const r = await solicitud;
+      expect(r.status).toBe(401);
+      expect(r.body.codigo).toBe('UNAUTHORIZED');
+    }
+  });
+
   it('no revela si el usuario o la contraseña son incorrectos', async () => {
     const a = await request(servidor())
       .post('/auth/login')
@@ -263,7 +290,6 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
         ],
       },
     },
-    { ruta: '/configuracion/franja', cuerpo: { inicioHora: 24, finHora: 24 } },
     {
       ruta: '/configuracion/franja',
       cuerpo: { inicioHora: 6, finHora: 18, extra: true },
@@ -349,6 +375,26 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       }
     },
   );
+  it.each([
+    { inicioHora: 24, finHora: 24 },
+    { inicioHora: -1, finHora: 18 },
+    { inicioHora: 6, finHora: 25 },
+  ])(
+    'rechaza por dominio un horario entero fuera de rango: %j',
+    async (cuerpo) => {
+      const r = await request(servidor())
+        .put('/configuracion/franja')
+        .set(admin())
+        .send(cuerpo);
+      expect(r.status).toBe(422);
+      expect(r.body.codigo).toBe('FRANJA_INVALIDA');
+      expect(
+        (await request(servidor()).get('/configuracion/tarifas').set(admin()))
+          .body.franja,
+      ).toEqual({ inicioHora: 6, finHora: 18 });
+    },
+  );
+
   it('admite gratuidad 0/0 y rechaza un horario incoherente con 422', async () => {
     expect(
       (
@@ -383,6 +429,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     expect(r.status).toBe(200);
     const esperadas = [
       'post /auth/login',
+      'get /auth/sesion',
       ...operaciones.map((o) => `${o.metodo} ${o.ruta}`),
     ].sort();
     const documentadas = Object.entries(r.body.paths)

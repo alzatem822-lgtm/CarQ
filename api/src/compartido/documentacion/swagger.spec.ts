@@ -55,14 +55,14 @@ describe('Publicación del contrato Swagger', () => {
   afterAll(async () => {
     await app.close();
   });
-  it('documenta las ocho operaciones con identificadores únicos y respuesta 200', () => {
+  it('documenta las nueve operaciones con identificadores únicos y respuesta 200', () => {
     const operaciones = Object.values(documento.paths).flatMap((path) =>
       Object.entries(path ?? {})
         .filter(([metodo]) => ['get', 'put', 'post'].includes(metodo))
         .map(([, op]) => op),
     );
-    expect(operaciones).toHaveLength(8);
-    expect(new Set(operaciones.map((op) => op.operationId)).size).toBe(8);
+    expect(operaciones).toHaveLength(9);
+    expect(new Set(operaciones.map((op) => op.operationId)).size).toBe(9);
     operaciones.forEach((op) => {
       expect(op.summary).toBeTruthy();
       expect(op.responses['200']).toBeDefined();
@@ -71,6 +71,15 @@ describe('Publicación del contrato Swagger', () => {
   });
   it('marca login como público y todas las operaciones de configuración con JWT', () => {
     expect(documento.paths['/auth/login']?.post?.security).toBeUndefined();
+    expect(documento.paths['/auth/sesion']?.get?.security).toContainEqual({
+      sesion: [],
+    });
+    expect(
+      documento.paths['/auth/sesion']?.get?.responses['401'],
+    ).toBeDefined();
+    expect(
+      documento.paths['/auth/sesion']?.get?.responses['403'],
+    ).toBeUndefined();
     for (const [ruta, path] of Object.entries(documento.paths)) {
       if (!ruta.startsWith('/configuracion/')) continue;
       for (const metodo of ['get', 'put'] as const) {
