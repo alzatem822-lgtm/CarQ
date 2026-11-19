@@ -6,6 +6,7 @@ import { Alerta } from "@/componentes/interfaz/Alerta";
 import { CampoFormulario } from "@/componentes/interfaz/CampoFormulario";
 import { buscarPendientes, monedaCaja, type CobroCaja } from "@/lib/caja";
 import { mensajeDeErrorApi } from "@/lib/mensaje-error-api";
+import { DetalleCobro } from "./DetalleCobro";
 import estilos from "./Caja.module.css";
 
 type EstadoBusqueda = "inicial" | "buscando" | "resultado" | "error";
@@ -16,6 +17,7 @@ export default function CajaPage() {
   const [estado, setEstado] = useState<EstadoBusqueda>("inicial");
   const [error, setError] = useState<string | null>(null);
   const [cobros, setCobros] = useState<CobroCaja[]>([]);
+  const [seleccion, seleccionar] = useState<CobroCaja | null>(null);
   const solicitud = useRef<AbortController | null>(null);
 
   useEffect(() => () => solicitud.current?.abort(), []);
@@ -24,6 +26,7 @@ export default function CajaPage() {
     evento.preventDefault();
     solicitud.current?.abort();
     setCobros([]);
+    seleccionar(null);
     setError(null);
     const valor = placa.trim().toUpperCase();
     if (!/^[A-Z]{3}[0-9]{2}[A-Z0-9]$/.test(valor)) {
@@ -99,16 +102,24 @@ export default function CajaPage() {
               aria-label={`Cobros de ${placaConsultada}`}
             >
               {cobros.map((cobro) => (
-                <li className={estilos.fila} key={cobro.id}>
-                  <span>
-                    <strong>{cobro.placa}</strong> · {cobro.diaOperativo}
-                  </span>
-                  <span>{monedaCaja.format(cobro.tarifaAplicada)}</span>
+                <li key={cobro.id}>
+                  <button
+                    type="button"
+                    className={estilos.fila}
+                    aria-pressed={seleccion?.id === cobro.id}
+                    onClick={() => seleccionar(cobro)}
+                  >
+                    <span>
+                      <strong>{cobro.placa}</strong> · {cobro.diaOperativo}
+                    </span>
+                    <span>{monedaCaja.format(cobro.tarifaAplicada)}</span>
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </section>
+        {seleccion && <DetalleCobro cobro={seleccion} />}
       </div>
     </div>
   );

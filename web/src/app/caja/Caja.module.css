@@ -47,6 +47,32 @@
   text-align: left;
 }
 
+.fila:hover,
+.fila[aria-pressed="true"] {
+  border-color: var(--oro);
+}
+
+.detalle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.detalle dt {
+  color: var(--suave);
+  font-size: 12px;
+}
+
+.detalle dd {
+  margin: 3px 0 0;
+}
+
+.importe {
+  color: var(--oro);
+  font-weight: 700;
+}
+
 .estado {
   color: var(--suave);
   margin: 8px 0 0;
