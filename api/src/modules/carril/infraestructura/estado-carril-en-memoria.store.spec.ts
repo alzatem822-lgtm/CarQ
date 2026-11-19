@@ -14,6 +14,10 @@ describe('EstadoCarrilEnMemoriaStore', () => {
       vehiculoPresente: true,
       sentido: 'ENTRADA',
       ultimaLectura: { placa: 'ABC123', confianza: 0.95, origen: 'SIMULADO' },
+      ultimoResultado: {
+        resultado: 'AUTORIZADO',
+        motivo: 'Ingreso autorizado',
+      },
       barrera: { estado: 'ABIERTA', motivo: 'Ingreso autorizado' },
       requiereValidacionManual: false,
     };

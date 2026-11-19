@@ -1,3 +1,5 @@
+import type { ResultadoEvento } from './evento';
+
 /** Sentido en que se usa el carril; lo define el selector de la pantalla. */
 export type SentidoCarril = 'ENTRADA' | 'SALIDA';
 
@@ -20,6 +22,10 @@ export interface EstadoCarril {
   readonly vehiculoPresente: boolean;
   readonly sentido: SentidoCarril | null;
   readonly ultimaLectura: UltimaLectura | null;
+  readonly ultimoResultado: {
+    readonly resultado: ResultadoEvento;
+    readonly motivo: string;
+  } | null;
   readonly barrera: {
     readonly estado: EstadoBarrera;
     readonly motivo: string | null;
@@ -33,6 +39,7 @@ export function estadoCarrilInicial(): EstadoCarril {
     vehiculoPresente: false,
     sentido: null,
     ultimaLectura: null,
+    ultimoResultado: null,
     barrera: { estado: 'CERRADA', motivo: null },
     requiereValidacionManual: false,
   };

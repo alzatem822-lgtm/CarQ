@@ -25,6 +25,7 @@ describe('SensorSimulado', () => {
         vehiculoPresente: !presente,
         sentido: 'SALIDA',
         ultimaLectura: { placa: 'ABC123', confianza: 0.7, origen: 'SIMULADO' },
+        ultimoResultado: { resultado: 'RECHAZADO', motivo: 'Cobro pendiente' },
         barrera: { estado: 'CERRADA', motivo: 'Cobro pendiente' },
         requiereValidacionManual: true,
       };
