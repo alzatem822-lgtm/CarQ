@@ -22,3 +22,4 @@ export class TarifaPorFranja implements EstrategiaTarifa {
 }
 
 export const tarifaCarro = new TarifaPorFranja(TipoVehiculo.CARRO);
+export const tarifaMoto = new TarifaPorFranja(TipoVehiculo.MOTO);
