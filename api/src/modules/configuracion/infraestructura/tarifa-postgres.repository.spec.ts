@@ -8,7 +8,10 @@ interface Consulta {
   parametros: unknown[];
 }
 
-function origenFalso(opciones: { filas?: unknown[]; errorAlGuardar?: unknown }) {
+function origenFalso(opciones: {
+  filas?: unknown[];
+  errorAlGuardar?: unknown;
+}) {
   const consultas: Consulta[] = [];
   const gestor = {
     query: (sql: string, parametros: unknown[]) => {
@@ -49,9 +52,11 @@ describe('TarifaPostgresRepository', () => {
   it('guarda cada tarifa con SQL en la misma transacción', async () => {
     const { origen, consultas } = origenFalso({});
     await new TarifaPostgresRepository(origen).guardarTodas(tarifas);
-    expect(consultas).toHaveLength(2);
-    expect(consultas[0].parametros).toEqual([2, 'CARRO', 'DIURNA', 5000]);
-    expect(consultas[1].parametros).toEqual([2, 'CARRO', 'NOCTURNA', 3000]);
+    expect(consultas).toHaveLength(3);
+    expect(consultas[0].sql).toContain('FOR NO KEY UPDATE');
+    expect(consultas[0].parametros).toEqual([[2]]);
+    expect(consultas[1].parametros).toEqual([2, 'CARRO', 'DIURNA', 5000]);
+    expect(consultas[2].parametros).toEqual([2, 'CARRO', 'NOCTURNA', 3000]);
   });
 
   it('traduce la violación de unicidad a un error de dominio', async () => {

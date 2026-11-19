@@ -20,11 +20,13 @@ const RESTRICCION_CHECK = '23514';
 export class TarifaPostgresRepository implements TarifaRepository {
   constructor(private readonly origen: DataSource) {}
 
-  async obtenerTodas(): Promise<Tarifa[]> {
+  async obtenerTodas(sedeId?: string): Promise<Tarifa[]> {
     const filas: FilaTarifa[] = await this.origen.query(
       `SELECT sede_id, tipo_vehiculo, franja, valor
          FROM tarifa
+         WHERE ($1::integer IS NULL OR sede_id = $1::integer)
         ORDER BY sede_id, tipo_vehiculo, franja`,
+      [sedeId ?? null],
     );
     return filas.map((fila) =>
       Tarifa.crear(
@@ -39,6 +41,15 @@ export class TarifaPostgresRepository implements TarifaRepository {
   async guardarTodas(tarifas: Tarifa[]): Promise<void> {
     try {
       await this.origen.transaction(async (gestor) => {
+        // Serializa cambios de distintas franjas para que RN-02 pueda ver
+        // las tarifas confirmadas por la transacción anterior de la sede.
+        const sedes = [
+          ...new Set(tarifas.map((tarifa) => Number(tarifa.sedeId))),
+        ];
+        await gestor.query(
+          'SELECT id FROM sede WHERE id = ANY($1::integer[]) ORDER BY id FOR NO KEY UPDATE',
+          [sedes],
+        );
         for (const tarifa of tarifas) {
           await gestor.query(
             `INSERT INTO tarifa (sede_id, tipo_vehiculo, franja, valor)

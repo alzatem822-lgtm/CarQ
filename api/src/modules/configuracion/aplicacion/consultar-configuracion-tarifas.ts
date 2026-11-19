@@ -14,9 +14,9 @@ export class ConsultarConfiguracionTarifas {
     private readonly franja: FranjaRepository,
   ) {}
 
-  async ejecutar(): Promise<ConfiguracionTarifas> {
+  async ejecutar(sedeId?: string): Promise<ConfiguracionTarifas> {
     const [tarifas, franja] = await Promise.all([
-      this.tarifas.obtenerTodas(),
+      this.tarifas.obtenerTodas(sedeId),
       this.franja.obtener(),
     ]);
     return { tarifas, franja };
