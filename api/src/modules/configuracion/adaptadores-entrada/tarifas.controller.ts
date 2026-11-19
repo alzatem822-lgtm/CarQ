@@ -9,7 +9,10 @@ import { ActualizarTarifas } from '../aplicacion/actualizar-tarifas';
 import { ConsultarConfiguracionTarifas } from '../aplicacion/consultar-configuracion-tarifas';
 import { FranjaRepository } from '../aplicacion/franja.repository';
 import { Tarifa } from '../dominio/tarifa';
-import { ActualizarFranjaDto, ActualizarTarifasDto } from './actualizar-tarifas.dto';
+import {
+  ActualizarFranjaDto,
+  ActualizarTarifasDto,
+} from './actualizar-tarifas.dto';
 
 @Controller('configuracion')
 @UseGuards(GuardAutenticacionJwt, GuardRoles)
@@ -20,18 +23,42 @@ export class TarifasController {
     private readonly actualizar: ActualizarTarifas,
     private readonly actualizarFranja: ActualizarFranja,
     private readonly franjas: FranjaRepository,
-    @Inject('ResolverSedeConfiguracion') private readonly resolverSede: () => Promise<string>,
+    @Inject('ResolverSedeConfiguracion')
+    private readonly resolverSede: () => Promise<string>,
   ) {}
   @Get('tarifas')
   async obtener() {
-    const datos = await this.consultar.ejecutar();
-    return { tarifas: datos.tarifas.map(t => ({ tipoVehiculo: t.tipoVehiculo.codigo, franja: t.franja, valor: t.valor })), franja: { inicioHora: datos.franja.inicioHora, finHora: datos.franja.finHora } };
+    return this.consultarSede(await this.resolverSede());
+  }
+
+  private async consultarSede(sedeId: string) {
+    const datos = await this.consultar.ejecutar(sedeId);
+    return {
+      tarifas: datos.tarifas.map((t) => ({
+        tipoVehiculo: t.tipoVehiculo.codigo,
+        franja: t.franja,
+        valor: t.valor,
+      })),
+      franja: {
+        inicioHora: datos.franja.inicioHora,
+        finHora: datos.franja.finHora,
+      },
+    };
   }
   @Put('tarifas')
   async guardar(@Body() dto: ActualizarTarifasDto) {
     const sede = await this.resolverSede();
-    await this.actualizar.ejecutar(dto.tarifas.map(t => Tarifa.crear(sede, TipoVehiculo.desde(t.tipoVehiculo), t.franja, t.valor)));
-    return this.obtener();
+    await this.actualizar.ejecutar(
+      dto.tarifas.map((t) =>
+        Tarifa.crear(
+          sede,
+          TipoVehiculo.desde(t.tipoVehiculo),
+          t.franja,
+          t.valor,
+        ),
+      ),
+    );
+    return this.consultarSede(sede);
   }
   @Put('franja')
   async guardarFranja(@Body() dto: ActualizarFranjaDto) {

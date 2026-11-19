@@ -20,11 +20,13 @@ const RESTRICCION_CHECK = '23514';
 export class TarifaPostgresRepository implements TarifaRepository {
   constructor(private readonly origen: DataSource) {}
 
-  async obtenerTodas(): Promise<Tarifa[]> {
+  async obtenerTodas(sedeId?: string): Promise<Tarifa[]> {
     const filas: FilaTarifa[] = await this.origen.query(
       `SELECT sede_id, tipo_vehiculo, franja, valor
          FROM tarifa
+         WHERE ($1::integer IS NULL OR sede_id = $1::integer)
         ORDER BY sede_id, tipo_vehiculo, franja`,
+      [sedeId ?? null],
     );
     return filas.map((fila) =>
       Tarifa.crear(
