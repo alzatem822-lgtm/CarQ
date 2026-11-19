@@ -39,7 +39,11 @@ export function DetalleCobro({
         <div>
           <dt>Estado</dt>
           <dd>
-            <InsigniaEstado estado="cobroPendiente" />
+            <InsigniaEstado
+              estado={
+                cobro.estado === "PAGADO" ? "cobroPagado" : "cobroPendiente"
+              }
+            />
           </dd>
         </div>
       </dl>
