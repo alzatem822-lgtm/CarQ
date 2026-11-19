@@ -1,7 +1,8 @@
 import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 import { Reloj } from '../../../compartido/reloj/reloj';
 import { Cobro } from '../dominio/cobro';
-import { Pago } from '../dominio/pago';
+import { normalizarReferenciaPago, Pago } from '../dominio/pago';
+import { PagoRepository } from './pago.repository';
 import { TransaccionPago } from './transaccion-pago';
 
 export interface SolicitudPago {
@@ -20,9 +21,27 @@ export class RegistrarPagoEfectivo {
   constructor(
     private readonly transaccion: TransaccionPago,
     private readonly reloj: Reloj,
+    private readonly pagos: PagoRepository,
   ) {}
 
-  ejecutar(solicitud: SolicitudPago): Promise<ResultadoPago> {
+  async ejecutar(solicitud: SolicitudPago): Promise<ResultadoPago> {
+    const referencia = normalizarReferenciaPago(solicitud.referencia);
+    try {
+      return await this.registrar(solicitud, referencia);
+    } catch (error) {
+      if (!(error instanceof ErrorDominio) || error.codigo !== 'PAGO_DUPLICADO')
+        throw error;
+      const previo = await this.pagos.buscarPorReferencia(referencia);
+      if (previo && previo.cobroId !== solicitud.cobroId)
+        throw referenciaEnUso();
+      throw error;
+    }
+  }
+
+  private registrar(
+    solicitud: SolicitudPago,
+    referencia: string,
+  ): Promise<ResultadoPago> {
     return this.transaccion.ejecutar(
       solicitud.cobroId,
       solicitud.sedeId,
@@ -33,10 +52,16 @@ export class RegistrarPagoEfectivo {
             'El cobro no existe en esta sede.',
           );
 
+        const previo = await pagos.buscarPorReferencia(referencia);
+        if (previo) {
+          if (previo.cobroId !== solicitud.cobroId) throw referenciaEnUso();
+          return { cobro, pago: previo };
+        }
+
         const pagado = cobro.transicionar('PAGADO');
         const pago = Pago.crear({
           cobroId: solicitud.cobroId,
-          referencia: solicitud.referencia,
+          referencia,
           monto: cobro.tarifaAplicada,
           operador: solicitud.operador,
           fecha: this.reloj.ahora(),
@@ -52,4 +77,11 @@ export class RegistrarPagoEfectivo {
       },
     );
   }
+}
+
+function referenciaEnUso(): ErrorDominio {
+  return new ErrorDominio(
+    'REFERENCIA_EN_USO',
+    'La referencia corresponde a otro cobro.',
+  );
 }
