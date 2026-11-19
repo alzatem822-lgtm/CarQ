@@ -11,10 +11,24 @@ import { FranjaRepository } from '../aplicacion/franja.repository';
 import { Tarifa } from '../dominio/tarifa';
 import { ActualizarFranjaDto } from './actualizar-franja.dto';
 import { ActualizarTarifasDto } from './actualizar-tarifas.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ApiErrores } from '../../../compartido/documentacion/api-errores';
+import {
+  FranjaRespuestaDto,
+  TarifasRespuestaDto,
+} from './configuracion-respuesta.dto';
 
 @Controller('configuracion')
 @UseGuards(GuardAutenticacionJwt, GuardRoles)
 @RolesPermitidos(Rol.ADMINISTRADOR)
+@ApiTags('Tarifas y horario')
+@ApiBearerAuth('sesion')
 export class TarifasController {
   constructor(
     private readonly consultar: ConsultarConfiguracionTarifas,
@@ -25,6 +39,14 @@ export class TarifasController {
     private readonly resolverSede: () => Promise<string>,
   ) {}
   @Get('tarifas')
+  @ApiOperation({
+    operationId: 'consultarTarifas',
+    summary: 'Consultar tarifas y horario diurno',
+    description:
+      'Solo ADMINISTRADOR. Devuelve las tarifas persistidas y el intervalo diurno [inicioHora, finHora).',
+  })
+  @ApiOkResponse({ type: TarifasRespuestaDto })
+  @ApiErrores()
   async obtener() {
     return this.consultarSede(await this.resolverSede());
   }
@@ -44,6 +66,15 @@ export class TarifasController {
     };
   }
   @Put('tarifas')
+  @ApiOperation({
+    operationId: 'actualizarTarifas',
+    summary: 'Actualizar tarifas por tipo y franja',
+    description:
+      'Solo ADMINISTRADOR. La nocturna debe ser menor que la diurna (RN-02). Se conserva la decisión del equipo de permitir gratuidad 0/0. Valida cambios parciales contra las tarifas existentes y guarda el conjunto en una transacción. Un rechazo de RN-02 devuelve 422 con TARIFA_INVALIDA.',
+  })
+  @ApiBody({ type: ActualizarTarifasDto })
+  @ApiOkResponse({ type: TarifasRespuestaDto })
+  @ApiErrores({ cuerpo: true, dominio: true })
   async guardar(@Body() dto: ActualizarTarifasDto) {
     const sede = await this.resolverSede();
     await this.actualizar.ejecutar(
@@ -59,6 +90,15 @@ export class TarifasController {
     return this.consultarSede(sede);
   }
   @Put('franja')
+  @ApiOperation({
+    operationId: 'actualizarFranja',
+    summary: 'Actualizar horario diurno',
+    description:
+      'Solo ADMINISTRADOR. Inicio inclusivo y fin exclusivo; inicioHora debe ser menor que finHora. El resto del día es nocturno. La incoherencia del intervalo devuelve 422 con FRANJA_INVALIDA.',
+  })
+  @ApiBody({ type: ActualizarFranjaDto })
+  @ApiOkResponse({ type: FranjaRespuestaDto })
+  @ApiErrores({ cuerpo: true, dominio: true })
   async guardarFranja(@Body() dto: ActualizarFranjaDto) {
     await this.actualizarFranja.ejecutar(dto.inicioHora, dto.finHora);
     const franja = await this.franjas.obtener();
