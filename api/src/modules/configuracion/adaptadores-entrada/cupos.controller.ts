@@ -14,6 +14,15 @@ import { TipoVehiculo } from '../../vehiculos/dominio/tipo-vehiculo';
 import { ActualizarCupo } from '../aplicacion/actualizar-cupo';
 import { ConsultarCupos } from '../aplicacion/consultar-cupos';
 import { ActualizarCuposDto } from './actualizar-cupos.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ApiErrores } from '../../../compartido/documentacion/api-errores';
+import { CuposRespuestaDto } from './configuracion-respuesta.dto';
 
 export interface RespuestaCupos {
   cupos: { tipoVehiculo: string; maximo: number }[];
@@ -22,6 +31,8 @@ export interface RespuestaCupos {
 @Controller('configuracion/cupos')
 @UseGuards(GuardAutenticacionJwt, GuardRoles)
 @RolesPermitidos(Rol.ADMINISTRADOR)
+@ApiTags('Cupos')
+@ApiBearerAuth('sesion')
 export class CuposController {
   constructor(
     private readonly consultarCupos: ConsultarCupos,
@@ -29,11 +40,31 @@ export class CuposController {
   ) {}
 
   @Get()
+  @ApiOperation({
+    operationId: 'consultarCupos',
+    summary: 'Consultar capacidad por tipo',
+    description:
+      'Solo ADMINISTRADOR. Devuelve máximos configurados de la sede, no ocupación.',
+  })
+  @ApiOkResponse({ type: CuposRespuestaDto })
+  @ApiErrores()
   async consultar(): Promise<RespuestaCupos> {
     return this.respuesta();
   }
 
   @Put()
+  @ApiOperation({
+    operationId: 'actualizarCupos',
+    summary: 'Actualizar capacidad por tipo',
+    description:
+      'Solo ADMINISTRADOR. Actualiza los tipos incluidos en una única transacción. Los tipos omitidos conservan su capacidad.',
+  })
+  @ApiBody({ type: ActualizarCuposDto })
+  @ApiOkResponse({
+    type: CuposRespuestaDto,
+    description: 'Capacidades vigentes después del guardado.',
+  })
+  @ApiErrores({ cuerpo: true })
   async actualizar(@Body() dto: ActualizarCuposDto): Promise<RespuestaCupos> {
     // Se valida todo el pedido antes de guardar, para no dejar cambios a medias.
     const pedidos = dto.cupos.map((cupo) => ({

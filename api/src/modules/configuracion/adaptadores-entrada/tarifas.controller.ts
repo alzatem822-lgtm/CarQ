@@ -9,31 +9,94 @@ import { ActualizarTarifas } from '../aplicacion/actualizar-tarifas';
 import { ConsultarConfiguracionTarifas } from '../aplicacion/consultar-configuracion-tarifas';
 import { FranjaRepository } from '../aplicacion/franja.repository';
 import { Tarifa } from '../dominio/tarifa';
-import { ActualizarFranjaDto, ActualizarTarifasDto } from './actualizar-tarifas.dto';
+import {
+  ActualizarFranjaDto,
+  ActualizarTarifasDto,
+} from './actualizar-tarifas.dto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ApiErrores } from '../../../compartido/documentacion/api-errores';
+import {
+  FranjaRespuestaDto,
+  TarifasRespuestaDto,
+} from './configuracion-respuesta.dto';
 
 @Controller('configuracion')
 @UseGuards(GuardAutenticacionJwt, GuardRoles)
 @RolesPermitidos(Rol.ADMINISTRADOR)
+@ApiTags('Tarifas y horario')
+@ApiBearerAuth('sesion')
 export class TarifasController {
   constructor(
     private readonly consultar: ConsultarConfiguracionTarifas,
     private readonly actualizar: ActualizarTarifas,
     private readonly actualizarFranja: ActualizarFranja,
     private readonly franjas: FranjaRepository,
-    @Inject('ResolverSedeConfiguracion') private readonly resolverSede: () => Promise<string>,
+    @Inject('ResolverSedeConfiguracion')
+    private readonly resolverSede: () => Promise<string>,
   ) {}
   @Get('tarifas')
+  @ApiOperation({
+    operationId: 'consultarTarifas',
+    summary: 'Consultar tarifas y horario diurno',
+    description:
+      'Solo ADMINISTRADOR. Devuelve las tarifas persistidas y el intervalo diurno [inicioHora, finHora).',
+  })
+  @ApiOkResponse({ type: TarifasRespuestaDto })
+  @ApiErrores()
   async obtener() {
     const datos = await this.consultar.ejecutar();
-    return { tarifas: datos.tarifas.map(t => ({ tipoVehiculo: t.tipoVehiculo.codigo, franja: t.franja, valor: t.valor })), franja: { inicioHora: datos.franja.inicioHora, finHora: datos.franja.finHora } };
+    return {
+      tarifas: datos.tarifas.map((t) => ({
+        tipoVehiculo: t.tipoVehiculo.codigo,
+        franja: t.franja,
+        valor: t.valor,
+      })),
+      franja: {
+        inicioHora: datos.franja.inicioHora,
+        finHora: datos.franja.finHora,
+      },
+    };
   }
   @Put('tarifas')
+  @ApiOperation({
+    operationId: 'actualizarTarifas',
+    summary: 'Actualizar tarifas por tipo y franja',
+    description:
+      'Solo ADMINISTRADOR. La nocturna debe ser menor que la diurna (RN-02). Se conserva la decisión del equipo de permitir gratuidad 0/0. Valida cambios parciales contra las tarifas existentes y guarda el conjunto en una transacción. Un rechazo de RN-02 devuelve 422 con TARIFA_INVALIDA.',
+  })
+  @ApiBody({ type: ActualizarTarifasDto })
+  @ApiOkResponse({ type: TarifasRespuestaDto })
+  @ApiErrores({ cuerpo: true, dominio: true })
   async guardar(@Body() dto: ActualizarTarifasDto) {
     const sede = await this.resolverSede();
-    await this.actualizar.ejecutar(dto.tarifas.map(t => Tarifa.crear(sede, TipoVehiculo.desde(t.tipoVehiculo), t.franja, t.valor)));
+    await this.actualizar.ejecutar(
+      dto.tarifas.map((t) =>
+        Tarifa.crear(
+          sede,
+          TipoVehiculo.desde(t.tipoVehiculo),
+          t.franja,
+          t.valor,
+        ),
+      ),
+    );
     return this.obtener();
   }
   @Put('franja')
+  @ApiOperation({
+    operationId: 'actualizarFranja',
+    summary: 'Actualizar horario diurno',
+    description:
+      'Solo ADMINISTRADOR. Inicio inclusivo y fin exclusivo; inicioHora debe ser menor que finHora. El resto del día es nocturno. La incoherencia del intervalo devuelve 422 con FRANJA_INVALIDA.',
+  })
+  @ApiBody({ type: ActualizarFranjaDto })
+  @ApiOkResponse({ type: FranjaRespuestaDto })
+  @ApiErrores({ cuerpo: true, dominio: true })
   async guardarFranja(@Body() dto: ActualizarFranjaDto) {
     await this.actualizarFranja.ejecutar(dto.inicioHora, dto.finHora);
     const franja = await this.franjas.obtener();
