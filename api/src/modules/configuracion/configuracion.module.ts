@@ -12,11 +12,25 @@ import { ParametroRepository } from './aplicacion/parametro.repository';
 import { CupoPostgresRepository } from './infraestructura/cupo-postgres.repository';
 import { ParametroRepositoryPostgres } from './infraestructura/parametro.repository.postgres';
 import { obtenerIdSedePrincipal } from './infraestructura/sede-principal';
+import { TarifasController } from './adaptadores-entrada/tarifas.controller';
+import { TarifaRepository } from './aplicacion/tarifa.repository';
+import { FranjaRepository } from './aplicacion/franja.repository';
+import { TarifaPostgresRepository } from './infraestructura/tarifa-postgres.repository';
+import { FranjaPostgresRepository } from './infraestructura/franja-postgres.repository';
+import { ConsultarConfiguracionTarifas } from './aplicacion/consultar-configuracion-tarifas';
+import { ActualizarTarifas } from './aplicacion/actualizar-tarifas';
+import { ActualizarFranja } from './aplicacion/actualizar-franja';
 
 @Module({
   imports: [AccesoModule],
-  controllers: [CuposController, UmbralController],
+  controllers: [CuposController, UmbralController, TarifasController],
   providers: [
+    { provide: 'ResolverSedeConfiguracion', useFactory: (db: DataSource) => () => obtenerIdSedePrincipal(db), inject: [DataSource] },
+    { provide: TarifaRepository, useFactory: (db: DataSource) => new TarifaPostgresRepository(db), inject: [DataSource] },
+    { provide: FranjaRepository, useFactory: (db: DataSource) => new FranjaPostgresRepository(db), inject: [DataSource] },
+    { provide: ConsultarConfiguracionTarifas, useFactory: (tarifas: TarifaRepository, franja: FranjaRepository) => new ConsultarConfiguracionTarifas(tarifas, franja), inject: [TarifaRepository, FranjaRepository] },
+    { provide: ActualizarTarifas, useFactory: (tarifas: TarifaRepository) => new ActualizarTarifas(tarifas), inject: [TarifaRepository] },
+    { provide: ActualizarFranja, useFactory: (franja: FranjaRepository) => new ActualizarFranja(franja), inject: [FranjaRepository] },
     {
       provide: CupoRepository,
       useFactory: (origen: DataSource) => new CupoPostgresRepository(origen),

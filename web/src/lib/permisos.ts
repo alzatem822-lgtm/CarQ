@@ -7,10 +7,11 @@ export interface EnlaceNavegacion {
 }
 
 export const ENLACES: readonly EnlaceNavegacion[] = [
+  { ruta: '/inicio', texto: 'Vista general', roles: ['OPERADOR', 'ADMINISTRADOR'] },
   { ruta: '/carril', texto: 'Carril', roles: ['OPERADOR'] },
   { ruta: '/caja', texto: 'Caja', roles: ['OPERADOR'] },
   { ruta: '/administracion', texto: 'Administración', roles: ['ADMINISTRADOR'] },
-  { ruta: '/consulta', texto: 'Consulta', roles: ['ADMINISTRADOR'] },
+  { ruta: '/consulta', texto: 'Consulta', roles: ['OPERADOR', 'ADMINISTRADOR'] },
 ];
 
 export function enlacesPara(rol: RolSesion): EnlaceNavegacion[] {

@@ -15,7 +15,7 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <Navegacion />
-        <main style={{ padding: '1rem' }}>
+        <main id="contenido" className="contenido-app">
           <GuardiaDeRutas>{children}</GuardiaDeRutas>
         </main>
       </body>

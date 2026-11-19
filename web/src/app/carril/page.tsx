@@ -1,11 +1,2 @@
-import { InsigniaEstado } from '@/componentes/interfaz/InsigniaEstado';
-
-export default function CarrilPage() {
-  return (
-    <>
-      <h1>Carril</h1>
-      <InsigniaEstado estado="barreraCerrada" />
-      <InsigniaEstado estado="lecturaManual" />
-    </>
-  );
-}
+import { PantallaPendiente } from '@/componentes/PantallaPendiente';
+export default function CarrilPage() { return <PantallaPendiente titulo="Control del carril" descripcion="El espacio para gestionar entradas y salidas de vehículos." icono="carril" pasos={['Capturar una placa y validar su lectura.', 'Comprobar el tipo de vehículo y la disponibilidad.', 'Registrar ingreso o evaluar la salida.', 'Comunicar el resultado y el estado de la barrera.']} />; }

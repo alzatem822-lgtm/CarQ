@@ -13,12 +13,27 @@ class CupoRepositoryEnMemoria extends CupoRepository {
   }
 
   guardarTodos(cupos: Cupo[]): Promise<void> {
-    this.cupos = [...cupos];
+    this.cupos = [...this.cupos.filter(c => !cupos.some(n => n.sedeId === c.sedeId && n.tipoVehiculo.equals(c.tipoVehiculo))), ...cupos];
     return Promise.resolve();
   }
 }
 
 describe('ActualizarCupo', () => {
+  it('valida todo el lote antes de guardar y no deja el primero ante un segundo inválido', async () => {
+    const repo = new CupoRepositoryEnMemoria([Cupo.crear('s1', TipoVehiculo.CARRO, 3)]);
+    const guardar = jest.spyOn(repo, 'guardarTodos');
+    await expect(new ActualizarCupo(repo, 's1').ejecutarVarios([{ tipo: TipoVehiculo.CARRO, maximo: 10 }, { tipo: TipoVehiculo.MOTO, maximo: -1 }])).rejects.toThrow();
+    expect(guardar).not.toHaveBeenCalled();
+    expect(repo.cupos[0].maximo).toBe(3);
+  });
+
+  it('envía todos los tipos en una sola operación y propaga un fallo de persistencia', async () => {
+    const repo = new CupoRepositoryEnMemoria();
+    const guardar = jest.spyOn(repo, 'guardarTodos').mockRejectedValue(new Error('fallo de persistencia'));
+    await expect(new ActualizarCupo(repo, 's1').ejecutarVarios([{ tipo: TipoVehiculo.CARRO, maximo: 10 }, { tipo: TipoVehiculo.MOTO, maximo: 5 }])).rejects.toThrow('fallo de persistencia');
+    expect(guardar).toHaveBeenCalledTimes(1);
+    expect(guardar.mock.calls[0][0]).toHaveLength(2);
+  });
   it('guarda un máximo válido', async () => {
     const repo = new CupoRepositoryEnMemoria([
       Cupo.crear('s1', TipoVehiculo.CARRO, 50),

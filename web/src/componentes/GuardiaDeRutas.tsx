@@ -18,6 +18,7 @@ export function GuardiaDeRutas({ children }: { children: ReactNode }) {
     router.replace(sesion ? RUTA_INICIAL[sesion.rol] : '/login');
   }, [cargando, permitido, sesion, router]);
 
+  if (cargando && ruta !== '/login') return <div className="carga-pagina" role="status">Preparando tu espacio de trabajo…</div>;
   if (!permitido) return null;
   return <>{children}</>;
 }

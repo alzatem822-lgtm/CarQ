@@ -15,10 +15,13 @@ export class ActualizarCupo {
   ) {}
 
   async ejecutar(tipo: TipoVehiculo, maximo: number): Promise<void> {
+    return this.ejecutarVarios([{ tipo, maximo }]);
+  }
+
+  async ejecutarVarios(pedidos: { tipo: TipoVehiculo; maximo: number }[]): Promise<void> {
     const sedeId = typeof this.sede === 'string' ? this.sede : await this.sede();
-    const actualizado = Cupo.crear(sedeId, tipo, maximo);
-    const actuales = await this.cupos.obtenerTodos();
-    const otros = actuales.filter((c) => !c.tipoVehiculo.equals(tipo));
-    await this.cupos.guardarTodos([...otros, actualizado]);
+    // Validar el lote completo antes de iniciar su única escritura transaccional.
+    const actualizados = pedidos.map(({ tipo, maximo }) => Cupo.crear(sedeId, tipo, maximo));
+    await this.cupos.guardarTodos(actualizados);
   }
 }
