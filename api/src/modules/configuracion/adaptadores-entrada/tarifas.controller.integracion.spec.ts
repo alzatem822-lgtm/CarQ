@@ -22,6 +22,7 @@ describe('Configuración de tarifas y franja (HTTP y PostgreSQL)', () => {
   let operador: string;
   const emisor = new EmisorJwt('clave-solo-para-estas-pruebas', '5m');
   const rutaTarifas = '/configuracion/tarifas';
+  const rutaFranja = '/configuracion/franja';
   const servidor = () => request(app.getHttpServer() as Server);
   const tarifasIniciales = [
     { tipoVehiculo: 'CARRO', franja: 'DIURNA', valor: 5000 },
@@ -153,5 +154,45 @@ describe('Configuración de tarifas y franja (HTTP y PostgreSQL)', () => {
     expect(cambios.map((respuesta) => respuesta.status).sort()).toEqual([
       200, 422,
     ]);
+  });
+
+  it('conserva el horario guardado al reiniciar la API', async () => {
+    const franja = { inicioHora: 7, finHora: 19 };
+    await servidor()
+      .put(rutaFranja)
+      .set('Authorization', admin)
+      .send(franja)
+      .expect(200, franja);
+    await app.close();
+    app = await iniciarApi();
+    await consultar().expect(200, { tarifas: tarifasIniciales, franja });
+  });
+
+  it('rechaza el horario inválido y los cambios sin permiso sin modificar la franja', async () => {
+    const put = () => servidor().put(rutaFranja);
+    await put().send({ inicioHora: 7, finHora: 19 }).expect(401);
+    await put()
+      .set('Authorization', operador)
+      .send({ inicioHora: 7, finHora: 19 })
+      .expect(403);
+    await put().set('Authorization', admin).send({ inicioHora: 7 }).expect(400);
+    await put()
+      .set('Authorization', admin)
+      .send({ inicioHora: -1, finHora: 18 })
+      .expect(422)
+      .expect(({ body }) =>
+        expect(body).toMatchObject({ codigo: 'FRANJA_INVALIDA' }),
+      );
+    await put()
+      .set('Authorization', admin)
+      .send({ inicioHora: 18, finHora: 18 })
+      .expect(422)
+      .expect(({ body }) =>
+        expect(body).toMatchObject({ codigo: 'FRANJA_INVALIDA' }),
+      );
+    await consultar().expect(200, {
+      tarifas: tarifasIniciales,
+      franja: { inicioHora: 6, finHora: 18 },
+    });
   });
 });

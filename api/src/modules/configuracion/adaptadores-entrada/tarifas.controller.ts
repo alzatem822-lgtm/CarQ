@@ -9,10 +9,8 @@ import { ActualizarTarifas } from '../aplicacion/actualizar-tarifas';
 import { ConsultarConfiguracionTarifas } from '../aplicacion/consultar-configuracion-tarifas';
 import { FranjaRepository } from '../aplicacion/franja.repository';
 import { Tarifa } from '../dominio/tarifa';
-import {
-  ActualizarFranjaDto,
-  ActualizarTarifasDto,
-} from './actualizar-tarifas.dto';
+import { ActualizarFranjaDto } from './actualizar-franja.dto';
+import { ActualizarTarifasDto } from './actualizar-tarifas.dto';
 
 @Controller('configuracion')
 @UseGuards(GuardAutenticacionJwt, GuardRoles)

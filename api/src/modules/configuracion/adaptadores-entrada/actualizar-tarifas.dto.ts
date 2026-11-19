@@ -26,7 +26,3 @@ export class ActualizarTarifasDto {
   @Type(() => TarifaDto)
   tarifas!: TarifaDto[];
 }
-export class ActualizarFranjaDto {
-  @IsInt() @Min(0) @Max(23) inicioHora!: number;
-  @IsInt() @Min(1) @Max(24) finHora!: number;
-}
