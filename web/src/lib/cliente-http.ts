@@ -29,7 +29,12 @@ export async function peticion<T>(
 
   // Un 401 con sesión activa significa token vencido o inválido.
   // Sin token (por ejemplo, contraseña mala en el login) no se redirige.
-  if (respuesta.status === 401 && token) {
+  if (
+    respuesta.status === 401 &&
+    token &&
+    !opciones.signal?.aborted &&
+    token === obtenerToken()
+  ) {
     limpiarSesion();
     // Fuera de React no hay router; la recarga completa también reinicia el estado.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination

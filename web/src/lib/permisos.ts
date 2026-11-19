@@ -18,11 +18,17 @@ export function enlacesPara(rol: RolSesion): EnlaceNavegacion[] {
   return ENLACES.filter((enlace) => enlace.roles.includes(rol));
 }
 
-// Las rutas que no están en ENLACES (login, inicio) son públicas.
-export function puedeAcceder(rol: RolSesion | null, ruta: string): boolean {
-  const enlace = ENLACES.find(
+function permisoParaRuta(ruta: string) {
+  return ENLACES.find(
     (e) => ruta === e.ruta || ruta.startsWith(`${e.ruta}/`),
   );
-  if (!enlace) return true;
-  return rol !== null && enlace.roles.includes(rol);
+}
+
+export function esRutaProtegida(ruta: string): boolean {
+  return permisoParaRuta(ruta) !== undefined;
+}
+
+export function puedeAcceder(rol: RolSesion | null, ruta: string): boolean {
+  const enlace = permisoParaRuta(ruta);
+  return !enlace || (rol !== null && enlace.roles.includes(rol));
 }

@@ -1,20 +1,36 @@
 import {
   Body,
   Controller,
+  Get,
+  Header,
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   CredencialesInvalidas,
   IniciarSesion,
 } from '../aplicacion/iniciar-sesion';
 import { InicioSesionDto } from './inicio-sesion.dto';
+import {
+  GuardAutenticacionJwt,
+  type SolicitudAutenticada,
+} from './guard-autenticacion-jwt';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly iniciarSesion: IniciarSesion) {}
+
+  @Get('sesion')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(GuardAutenticacionJwt)
+  consultarSesion(@Req() solicitud: SolicitudAutenticada) {
+    if (!solicitud.usuario) throw new UnauthorizedException();
+    return { rol: solicitud.usuario.rol.codigo };
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

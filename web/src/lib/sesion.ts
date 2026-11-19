@@ -12,7 +12,7 @@ const EVENTO = 'carq:sesion';
 export function parsearSesion(cruda: string): Sesion | null {
   try {
     const dato = JSON.parse(cruda) as Partial<Sesion>;
-    if (typeof dato.token === 'string' && dato.rol && ROLES.includes(dato.rol)) {
+    if (typeof dato.token === 'string' && dato.token.trim() && dato.rol && ROLES.includes(dato.rol)) {
       return { token: dato.token, rol: dato.rol };
     }
   } catch {
