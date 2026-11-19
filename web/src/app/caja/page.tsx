@@ -93,7 +93,7 @@ export default function CajaPage() {
       setErrorPago(
         mensajeDeErrorApi(
           error,
-          "No pudimos confirmar el pago. Intenta de nuevo.",
+          "No pudimos confirmar el pago. Reintenta para conservar la misma referencia.",
         ),
       );
     } finally {
@@ -186,8 +186,21 @@ export default function CajaPage() {
                 </button>
               </form>
             )}
-            {errorPago && <Alerta tono="peligro">{errorPago}</Alerta>}
-            {confirmacion && <Alerta tono="exito">Pago registrado.</Alerta>}
+            {errorPago && (
+              <Alerta tono="peligro">
+                <strong>El pago no se pudo confirmar.</strong>
+                <p>{errorPago}</p>
+              </Alerta>
+            )}
+            {confirmacion && (
+              <Alerta tono="exito">
+                <strong>Pago registrado.</strong>
+                <p>
+                  {monedaCaja.format(confirmacion.pago.monto)} en efectivo ·
+                  Referencia {confirmacion.pago.referencia}
+                </p>
+              </Alerta>
+            )}
           </DetalleCobro>
         )}
       </div>
