@@ -1,3 +1,4 @@
+import { RelojFijo } from '../reloj/reloj-fijo';
 import { DiaOperativo } from './dia-operativo';
 
 describe('Día operativo de Bogotá', () => {
@@ -9,7 +10,8 @@ describe('Día operativo de Bogotá', () => {
     ['2027-01-01T10:59:00.000Z', '2026-12-31'],
     ['2027-01-01T11:00:00.000Z', '2027-01-01'],
   ])('asigna %s al día %s', (utc, esperado) => {
-    expect(dias.de(new Date(utc))).toBe(esperado);
+    const reloj = new RelojFijo(new Date(utc));
+    expect(dias.de(reloj.ahora())).toBe(esperado);
   });
 
   it.each([
