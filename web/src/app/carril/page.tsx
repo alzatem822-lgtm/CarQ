@@ -5,12 +5,30 @@ import { Cabecera } from "@/componentes/Cabecera";
 import { Icono } from "@/componentes/Icono";
 import { InsigniaEstado } from "@/componentes/interfaz/InsigniaEstado";
 import { useEstadoCarril } from "@/lib/usar-estado-carril";
+import type { EstadoCarril } from "@/lib/carril";
 import estilos from "./Carril.module.css";
 
 type SentidoCarril = "ENTRADA" | "SALIDA";
 
-function LecturaCarril({ sentido }: { sentido: SentidoCarril }) {
+function LecturaCarril({
+  sentido,
+  estado,
+  cargando,
+  error,
+}: {
+  sentido: SentidoCarril;
+  estado: EstadoCarril | null;
+  cargando: boolean;
+  error: string | null;
+}) {
   const operacion = sentido === "ENTRADA" ? "entrada" : "salida";
+  const lectura = error ? null : estado?.ultimaLectura;
+  const sinLectura = cargando
+    ? "Consultando…"
+    : error
+      ? "No disponible"
+      : "Sin lectura";
+  const requiereManual = !error && estado?.requiereValidacionManual;
   return (
     <section
       className={estilos.lectura}
@@ -31,16 +49,38 @@ function LecturaCarril({ sentido }: { sentido: SentidoCarril }) {
         <h3>Sin captura</h3>
         <p>La captura de imágenes aún no está disponible.</p>
       </div>
-      <div className={estilos.datosLectura}>
+      <div
+        className={estilos.datosLectura}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <div>
           <span>Placa</span>
-          <strong>Sin lectura</strong>
+          <strong className={lectura ? estilos.placaLeida : undefined}>
+            {lectura?.placa || sinLectura}
+          </strong>
         </div>
         <div>
           <span>Confianza</span>
-          <strong>Sin lectura</strong>
+          <strong
+            className={requiereManual ? estilos.confianzaManual : undefined}
+          >
+            {lectura
+              ? new Intl.NumberFormat("es-CO", {
+                  style: "percent",
+                  maximumFractionDigits: 2,
+                }).format(lectura.confianza)
+              : sinLectura}
+          </strong>
         </div>
       </div>
+      {requiereManual && (
+        <div className={estilos.avisoManual} role="status">
+          <InsigniaEstado estado="lecturaManual" />
+          <p>La lectura requiere validación del operador antes de continuar.</p>
+        </div>
+      )}
       <footer className={estilos.pieLectura}>
         <p>La próxima captura se destinará a una {operacion}.</p>
         <button
@@ -128,7 +168,12 @@ export default function CarrilPage() {
         <strong>{sentido === "ENTRADA" ? "Entrada" : "Salida"}</strong>
       </p>
       <div className={estilos.distribucion}>
-        <LecturaCarril sentido={sentido} />
+        <LecturaCarril
+          sentido={sentido}
+          estado={estado}
+          cargando={cargando}
+          error={error}
+        />
         <div className={estilos.lateral}>
           <section className={estilos.panel} aria-labelledby="titulo-barrera">
             <header className={estilos.encabezadoPanel}>
