@@ -5,6 +5,7 @@ import { Cabecera } from "@/componentes/Cabecera";
 import { Icono } from "@/componentes/Icono";
 import { InsigniaEstado } from "@/componentes/interfaz/InsigniaEstado";
 import { useEstadoCarril } from "@/lib/usar-estado-carril";
+import { useOcupacionCarril } from "@/lib/usar-ocupacion-carril";
 import type { EstadoCarril } from "@/lib/carril";
 import estilos from "./Carril.module.css";
 
@@ -103,6 +104,7 @@ function LecturaCarril({
 export default function CarrilPage() {
   const [sentido, setSentido] = useState<SentidoCarril>("ENTRADA");
   const { estado, cargando, error } = useEstadoCarril();
+  const ocupacion = useOcupacionCarril();
   return (
     <div className="pagina">
       <Cabecera
@@ -232,18 +234,43 @@ export default function CarrilPage() {
               </div>
               <Icono nombre="carro" size={22} />
             </header>
-            <dl className={estilos.cupos}>
-              <div>
-                <dt>Carros</dt>
-                <dd>Sin consultar</dd>
-              </div>
-              <div>
-                <dt>Motos</dt>
-                <dd>Sin consultar</dd>
-              </div>
+            <dl className={estilos.cupos} aria-live="polite" aria-atomic="true">
+              {(["CARRO", "MOTO"] as const).map((tipo) => {
+                const cupo = ocupacion.datos?.cupos.find(
+                  (actual) => actual.tipoVehiculo === tipo,
+                );
+                return (
+                  <div key={tipo}>
+                    <dt>{tipo === "CARRO" ? "Carros" : "Motos"}</dt>
+                    <dd>
+                      {cupo ? (
+                        <>
+                          <strong>
+                            {cupo.ocupacion} / {cupo.maximo}
+                          </strong>
+                          {cupo.ocupacion >= cupo.maximo && (
+                            <span className={estilos.lleno}>
+                              <InsigniaEstado estado="lleno" />
+                            </span>
+                          )}
+                        </>
+                      ) : ocupacion.cargando ? (
+                        "Consultando…"
+                      ) : ocupacion.error ? (
+                        "No disponible"
+                      ) : (
+                        "Sin configuración"
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
             <p className={estilos.descripcion}>
-              La ocupación y la capacidad aún no se han consultado.
+              {ocupacion.error ??
+                (ocupacion.cargando
+                  ? "Consultando ocupación y capacidad…"
+                  : "Vehículos presentes / capacidad configurada por tipo.")}
             </p>
           </section>
         </div>

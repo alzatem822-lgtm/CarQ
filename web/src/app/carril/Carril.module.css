@@ -363,3 +363,7 @@
   color: var(--oro-claro);
   font-size: 12px;
 }
+.lleno {
+  display: block;
+  margin-top: 8px;
+}
