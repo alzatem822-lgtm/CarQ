@@ -302,3 +302,18 @@
     grid-template-columns: 1fr;
   }
 }
+.conexion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--suave);
+  font-size: 12px;
+}
+.conexion svg {
+  color: var(--oro);
+}
