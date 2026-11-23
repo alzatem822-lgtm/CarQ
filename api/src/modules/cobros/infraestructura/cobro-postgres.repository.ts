@@ -1,5 +1,4 @@
 import type { DataSource } from 'typeorm';
-import { esUnicidad } from '../../../compartido/base-datos/restriccion-postgres';
 import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 import { TipoFranja } from '../../configuracion/dominio/franja';
 import { Placa } from '../../vehiculos/dominio/placa';
@@ -69,29 +68,27 @@ export class CobroPostgresRepository extends CobroRepository {
   }
 
   async guardar(cobro: Cobro): Promise<Cobro> {
-    try {
-      const [fila]: FilaCobro[] = await this.origen.query(
-        `INSERT INTO cobro (placa, tipo_vehiculo, sede_id, dia_operativo, franja, tarifa_aplicada)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING ${columnas}`,
-        [
-          cobro.placa.valor,
-          cobro.tipoVehiculo.codigo,
-          cobro.sedeId,
-          cobro.diaOperativo,
-          cobro.franja,
-          cobro.tarifaAplicada,
-        ],
+    const [fila]: FilaCobro[] = await this.origen.query(
+      `INSERT INTO cobro (placa, tipo_vehiculo, sede_id, dia_operativo, franja, tarifa_aplicada)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT ON CONSTRAINT uq_cobro_placa_sede_dia DO NOTHING
+       RETURNING ${columnas}`,
+      [
+        cobro.placa.valor,
+        cobro.tipoVehiculo.codigo,
+        cobro.sedeId,
+        cobro.diaOperativo,
+        cobro.franja,
+        cobro.tarifaAplicada,
+      ],
+    );
+    if (!fila) {
+      throw new ErrorDominio(
+        'COBRO_DUPLICADO',
+        'Ya existe un cobro para la placa en el día operativo.',
       );
-      return aCobro(fila);
-    } catch (error) {
-      if (esUnicidad(error, 'uq_cobro_placa_sede_dia')) {
-        throw new ErrorDominio(
-          'COBRO_DUPLICADO',
-          'Ya existe un cobro para la placa en el día operativo.',
-        );
-      }
-      throw error;
     }
+    return aCobro(fila);
   }
 
   actualizarEstado(
