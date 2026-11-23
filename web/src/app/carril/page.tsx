@@ -8,6 +8,7 @@ import { useEstadoCarril } from "@/lib/usar-estado-carril";
 import { useOcupacionCarril } from "@/lib/usar-ocupacion-carril";
 import type { EstadoCarril } from "@/lib/carril";
 import estilos from "./Carril.module.css";
+import { CapturaCamara } from "./CapturaCamara";
 import { PanelSimulacion } from "./PanelSimulacion";
 
 type SentidoCarril = "ENTRADA" | "SALIDA";
@@ -44,13 +45,7 @@ function LecturaCarril({
         </div>
         <span className={estilos.destino}>Captura de {operacion}</span>
       </header>
-      <div className={estilos.visor}>
-        <span className={estilos.iconoVisor}>
-          <Icono nombre="carril" size={38} />
-        </span>
-        <h3>Sin captura</h3>
-        <p>La captura de imágenes aún no está disponible.</p>
-      </div>
+      <CapturaCamara sentido={sentido} />
       <div
         className={estilos.datosLectura}
         role="status"
@@ -83,21 +78,6 @@ function LecturaCarril({
           <p>La lectura requiere validación del operador antes de continuar.</p>
         </div>
       )}
-      <footer className={estilos.pieLectura}>
-        <p>La próxima captura se destinará a una {operacion}.</p>
-        <button
-          type="button"
-          className="boton-primario"
-          disabled
-          aria-describedby="captura-pendiente"
-        >
-          Capturar {operacion}
-          <Icono nombre="flecha" size={16} />
-        </button>
-      </footer>
-      <p id="captura-pendiente" className={estilos.nota}>
-        Captura y procesamiento pendientes de integración.
-      </p>
     </section>
   );
 }
