@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Cabecera } from "@/componentes/Cabecera";
 import { Icono } from "@/componentes/Icono";
+import { useEstadoCarril } from "@/lib/usar-estado-carril";
 import estilos from "./Carril.module.css";
 
 type SentidoCarril = "ENTRADA" | "SALIDA";
@@ -60,6 +61,7 @@ function LecturaCarril({ sentido }: { sentido: SentidoCarril }) {
 
 export default function CarrilPage() {
   const [sentido, setSentido] = useState<SentidoCarril>("ENTRADA");
+  const { estado, cargando, error } = useEstadoCarril();
   return (
     <div className="pagina">
       <Cabecera
@@ -67,8 +69,25 @@ export default function CarrilPage() {
         titulo="Control del carril"
         descripcion="Selecciona el sentido y prepara la lectura del vehículo."
       >
-        <span className="estado-pendiente">Pendiente de integración</span>
+        <span className={estado ? "estado-disponible" : "estado-pendiente"}>
+          {cargando
+            ? "Consultando estado…"
+            : error
+              ? "Estado no disponible"
+              : "Sondeo conectado"}
+        </span>
       </Cabecera>
+      <section className={estilos.conexion} aria-label="Conexión con el carril">
+        <Icono nombre="carril" size={20} />
+        <p role="status">
+          {cargando
+            ? "Consultando presencia del vehículo…"
+            : (error ??
+              (estado?.vehiculoPresente
+                ? "Vehículo presente en el carril"
+                : "Carril libre"))}
+        </p>
+      </section>
       <fieldset className={estilos.selector}>
         <legend>Sentido del carril</legend>
         <div className={estilos.opciones}>
@@ -118,9 +137,9 @@ export default function CarrilPage() {
               </div>
               <Icono nombre="carril" size={22} />
             </header>
-            <p className={estilos.sinDatos}>Estado sin consultar</p>
+            <p className={estilos.sinDatos}>Indicador pendiente</p>
             <p className={estilos.descripcion}>
-              El estado y el motivo aparecerán al conectar el carril.
+              La visualización de la barrera aún no está disponible.
             </p>
           </section>
           <section className={estilos.panel} aria-labelledby="titulo-cupos">
