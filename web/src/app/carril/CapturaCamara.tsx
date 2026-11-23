@@ -24,6 +24,7 @@ export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<string | null>(null);
+  const [archivo, setArchivo] = useState<File | null>(null);
   const operacion = sentido === "ENTRADA" ? "entrada" : "salida";
 
   useEffect(
@@ -100,9 +101,11 @@ export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
     }
   }
 
-  async function capturar() {
+  async function capturar(imagenSeleccionada?: File) {
     const visor = video.current;
-    if (ocupado.current || !visor || !listo || !stream.current?.active) return;
+    if (ocupado.current) return;
+    if (!imagenSeleccionada && (!visor || !listo || !stream.current?.active))
+      return;
     ocupado.current = true;
     const control = new AbortController();
     solicitud.current = control;
@@ -112,26 +115,32 @@ export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
     setError(null);
     setResultado(null);
     try {
-      if (!visor.videoWidth || !visor.videoHeight)
-        throw new Error("Fotograma no disponible");
-      const lienzo = document.createElement("canvas");
-      const escala = Math.min(
-        1,
-        1280 / Math.max(visor.videoWidth, visor.videoHeight),
-      );
-      lienzo.width = Math.round(visor.videoWidth * escala);
-      lienzo.height = Math.round(visor.videoHeight * escala);
-      const contexto = lienzo.getContext("2d");
-      if (!contexto) throw new Error("No se pudo capturar");
-      contexto.drawImage(visor, 0, 0, lienzo.width, lienzo.height);
-      const imagen = await new Promise<Blob>((resolver, rechazar) => {
-        lienzo.toBlob(
-          (blob) =>
-            blob ? resolver(blob) : rechazar(new Error("Captura vacía")),
-          "image/jpeg",
-          0.85,
+      let imagen: Blob;
+      if (imagenSeleccionada) {
+        imagen = imagenSeleccionada;
+      } else {
+        if (!visor) throw new Error("Video no disponible");
+        if (!visor.videoWidth || !visor.videoHeight)
+          throw new Error("Fotograma no disponible");
+        const lienzo = document.createElement("canvas");
+        const escala = Math.min(
+          1,
+          1280 / Math.max(visor.videoWidth, visor.videoHeight),
         );
-      });
+        lienzo.width = Math.round(visor.videoWidth * escala);
+        lienzo.height = Math.round(visor.videoHeight * escala);
+        const contexto = lienzo.getContext("2d");
+        if (!contexto) throw new Error("No se pudo capturar");
+        contexto.drawImage(visor, 0, 0, lienzo.width, lienzo.height);
+        imagen = await new Promise<Blob>((resolver, rechazar) => {
+          lienzo.toBlob(
+            (blob) =>
+              blob ? resolver(blob) : rechazar(new Error("Captura vacía")),
+            "image/jpeg",
+            0.85,
+          );
+        });
+      }
       if (control.signal.aborted) return;
       const respuesta = await procesarImagenCarril(
         destino,
@@ -211,6 +220,48 @@ export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
         La captura se enviará para {operacion}. El resultado aparecerá aquí y en
         el estado del carril.
       </p>
+      <div className={estilos.cargaImagen}>
+        <label htmlFor="imagen-alternativa">Imagen alternativa</label>
+        <p id="ayuda-imagen" className={estilos.nota}>
+          Si no puedes usar la cámara, selecciona una imagen JPEG, PNG o WebP de
+          hasta 5 MiB y confirma su envío.
+        </p>
+        <input
+          id="imagen-alternativa"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          aria-describedby="ayuda-imagen"
+          disabled={enviando}
+          onChange={(evento) => {
+            const seleccionado = evento.target.files?.[0] ?? null;
+            setArchivo(null);
+            setError(null);
+            setResultado(null);
+            if (!seleccionado) return;
+            if (
+              !["image/jpeg", "image/png", "image/webp"].includes(seleccionado.type)
+            ) {
+              setError("Selecciona una imagen JPEG, PNG o WebP.");
+              evento.target.value = "";
+              return;
+            }
+            if (seleccionado.size === 0 || seleccionado.size > 5 * 1024 * 1024) {
+              setError("La imagen debe contener datos y no superar 5 MiB.");
+              evento.target.value = "";
+              return;
+            }
+            setArchivo(seleccionado);
+          }}
+        />
+        <button
+          type="button"
+          className="boton-secundario"
+          disabled={!archivo || enviando}
+          onClick={() => archivo && void capturar(archivo)}
+        >
+          {enviando ? "Procesando imagen…" : `Enviar imagen para ${operacion}`}
+        </button>
+      </div>
       {error && <Alerta tono="peligro">{error}</Alerta>}
       {resultado && <p role="status">{resultado}</p>}
     </div>

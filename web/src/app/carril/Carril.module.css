@@ -389,3 +389,25 @@
 .capturaCamara {
   min-width: 0;
 }
+
+.cargaImagen {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--borde);
+}
+.cargaImagen input {
+  width: 100%;
+  min-width: 0;
+  color: var(--suave);
+}
+.cargaImagen input::file-selector-button {
+  margin-right: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--texto);
+  cursor: pointer;
+}
