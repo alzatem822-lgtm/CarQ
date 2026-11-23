@@ -18,7 +18,9 @@ const RESTRICCION_CHECK = '23514';
 
 @Injectable()
 export class TarifaPostgresRepository implements TarifaRepository {
-  constructor(private readonly origen: DataSource) {}
+  constructor(
+    private readonly origen: Pick<DataSource, 'query' | 'transaction'>,
+  ) {}
 
   async obtenerTodas(sedeId?: string): Promise<Tarifa[]> {
     const filas: FilaTarifa[] = await this.origen.query(

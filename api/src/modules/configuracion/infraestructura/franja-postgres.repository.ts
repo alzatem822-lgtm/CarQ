@@ -10,7 +10,7 @@ interface FilaFranja {
 
 @Injectable()
 export class FranjaPostgresRepository implements FranjaRepository {
-  constructor(private readonly origen: DataSource) {}
+  constructor(private readonly origen: Pick<DataSource, 'query'>) {}
 
   async obtener(sedeId?: string): Promise<Franja> {
     const filas: FilaFranja[] = await this.origen.query(

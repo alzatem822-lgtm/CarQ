@@ -5,7 +5,7 @@ import { Evento } from '../dominio/evento';
 
 @Injectable()
 export class EventoPostgresRepository implements EventoRepository {
-  constructor(private readonly origen: DataSource) {}
+  constructor(private readonly origen: Pick<DataSource, 'query'>) {}
 
   async registrar(evento: Evento): Promise<void> {
     await this.origen.query(
