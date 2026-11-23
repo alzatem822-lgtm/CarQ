@@ -38,10 +38,51 @@ describe('Evento', () => {
   });
 
   it('rechaza un motivo vacío', () => {
-    expect(() => Evento.crear({ ...datosBase, motivo: '   ' })).toThrow(ErrorDominio);
+    expect(() => Evento.crear({ ...datosBase, motivo: '   ' })).toThrow(
+      ErrorDominio,
+    );
   });
 
-  it.each([-0.1, 1.1])('rechaza la confianza fuera de rango (%s)', (confianza) => {
-    expect(() => Evento.crear({ ...datosBase, confianza })).toThrow(ErrorDominio);
+  it.each([-0.1, 1.1])(
+    'rechaza la confianza fuera de rango (%s)',
+    (confianza) => {
+      expect(() => Evento.crear({ ...datosBase, confianza })).toThrow(
+        ErrorDominio,
+      );
+    },
+  );
+  it('conserva operador y marca manual al validar una placa', () => {
+    const evento = Evento.crear({
+      ...datosBase,
+      origen: 'MANUAL',
+      lecturaManual: true,
+      operador: ' operador ',
+    });
+    expect(evento.operador).toBe('operador');
+    expect(evento.lecturaManual).toBe(true);
+  });
+  it.each([undefined, null, '', '  ', 'x'.repeat(101)])(
+    'rechaza evento manual sin identidad válida: %s',
+    (operador) => {
+      expect(() =>
+        Evento.crear({
+          ...datosBase,
+          origen: 'MANUAL',
+          lecturaManual: true,
+          operador,
+        }),
+      ).toThrow('operador');
+    },
+  );
+  it('exige operador aunque solo el origen o la marca indiquen lectura manual', () => {
+    expect(() => Evento.crear({ ...datosBase, origen: 'MANUAL' })).toThrow(
+      'operador',
+    );
+    expect(() => Evento.crear({ ...datosBase, lecturaManual: true })).toThrow(
+      'operador',
+    );
+  });
+  it('admite un evento automático sin operador', () => {
+    expect(Evento.crear(datosBase).operador).toBeNull();
   });
 });

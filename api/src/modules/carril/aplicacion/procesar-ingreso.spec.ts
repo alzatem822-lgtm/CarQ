@@ -30,9 +30,11 @@ describe('ProcesarIngreso', () => {
       transaccion,
       estado,
       barrera,
-    ).ejecutar(1, 2, { placa: 'ABC123', confianza: 0.9 });
+    ).ejecutar(1, 2, { placa: 'ABC123', confianza: 0.9 }, 'operador');
     expect(orden).toEqual(['commit', 'abrir']);
-    expect(transaccion.ejecutar.mock.calls[0]).toBeDefined();
+    expect(transaccion.ejecutar).toHaveBeenCalledWith(
+      expect.objectContaining({ operador: 'operador' }),
+    );
     expect((await estado.obtener()).ultimoResultado?.resultado).toBe(
       'AUTORIZADO',
     );
@@ -57,12 +59,10 @@ describe('ProcesarIngreso', () => {
     expect(barrera.denegar).not.toHaveBeenCalled();
   });
   it('expone el fallo de barrera posterior al commit sin repetir la transacción', async () => {
-    const ejecutar = jest
-      .fn()
-      .mockResolvedValue({
-        resultado: 'AUTORIZADO',
-        motivo: 'Ingreso autorizado',
-      });
+    const ejecutar = jest.fn().mockResolvedValue({
+      resultado: 'AUTORIZADO',
+      motivo: 'Ingreso autorizado',
+    });
     await expect(
       new ProcesarIngreso(
         new LectorSimulado(),

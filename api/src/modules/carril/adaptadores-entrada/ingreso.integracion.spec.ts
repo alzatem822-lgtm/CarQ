@@ -15,6 +15,8 @@ import { sembrarSedeYCarril } from '../../../compartido/base-datos/seeds/sede-ca
 import { sembrarCupos } from '../../../compartido/base-datos/seeds/cupos.seed';
 import { sembrarTarifasYFranja } from '../../../compartido/base-datos/seeds/tarifas-franja.seed';
 import { sembrarUmbral } from '../../../compartido/base-datos/seeds/umbral.seed';
+import { LectorPlaca } from '../../vehiculos/aplicacion/lector-placa';
+import { LectorManual } from '../../vehiculos/infraestructura/lector-manual';
 import { Reloj } from '../../../compartido/reloj/reloj';
 import { RelojFijo } from '../../../compartido/reloj/reloj-fijo';
 import { BarreraCarril } from '../aplicacion/barrera-carril';
@@ -76,6 +78,9 @@ describe('Ingreso HTTP con transacciones PostgreSQL reales', () => {
     await sembrarCupos(db);
     await sembrarTarifasYFranja(db);
     await sembrarUmbral(db);
+    await db.query(
+      "INSERT INTO usuario (nombre, hash_contrasena, rol) VALUES ('operador', 'hash-prueba', 'OPERADOR')",
+    );
     await db.query('UPDATE parametro_sede SET umbral_confianza = 0.80');
     await app.get(EstadoCarrilStore).guardar(estadoCarrilInicial());
     jest.resetAllMocks();
@@ -104,10 +109,45 @@ describe('Ingreso HTTP con transacciones PostgreSQL reales', () => {
       tarifa_aplicada: 5000,
       estado: 'PENDIENTE',
     });
+    expect((await db.query('SELECT operador FROM evento'))[0].operador).toBe(
+      'operador',
+    );
     expect(barrera.abrir).toHaveBeenCalledTimes(1);
     expect(
       (await app.get(EstadoCarrilStore).obtener()).ultimaLectura,
     ).toMatchObject({ placa: 'ABC123', confianza: 0.95 });
+  });
+  it('registra la lectura manual con la identidad autenticada', async () => {
+    const leer = jest
+      .spyOn(app.get(LectorPlaca), 'leer')
+      .mockImplementationOnce((solicitud) =>
+        new LectorManual().leer(solicitud),
+      );
+    try {
+      await ingresar('ABC123', 0.1).expect(200, {
+        resultado: 'AUTORIZADO',
+        motivo: 'Ingreso autorizado',
+      });
+      const [evento] = await db.query(
+        'SELECT placa, origen, lectura_manual, operador FROM evento',
+      );
+      expect(evento).toEqual({
+        placa: 'ABC123',
+        origen: 'MANUAL',
+        lectura_manual: true,
+        operador: 'operador',
+      });
+    } finally {
+      leer.mockRestore();
+    }
+  });
+  it('no permite suplantar al operador enviándolo en el cuerpo', async () => {
+    await request(app.getHttpServer())
+      .post('/carril/ingreso')
+      .auth(token(), { type: 'bearer' })
+      .send({ placa: 'ABC123', confianza: 1, operador: 'otra-persona' })
+      .expect(400);
+    expect(await contar()).toEqual({ cobros: 0, estancias: 0, eventos: 0 });
   });
   it('no crea cobro para tarifa cero', async () => {
     await ingresar('ABC12D').expect(200);

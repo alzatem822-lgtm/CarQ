@@ -11,8 +11,8 @@ export class EventoPostgresRepository implements EventoRepository {
     await this.origen.query(
       `INSERT INTO evento
          (sede_id, carril_id, placa, sentido, resultado, motivo,
-          confianza, origen, lectura_manual, ocurrido_en)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          confianza, origen, lectura_manual, ocurrido_en, operador)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         Number(evento.sedeId),
         Number(evento.carrilId),
@@ -24,6 +24,7 @@ export class EventoPostgresRepository implements EventoRepository {
         evento.origen,
         evento.lecturaManual,
         evento.ocurridoEn,
+        evento.operador,
       ],
     );
   }
