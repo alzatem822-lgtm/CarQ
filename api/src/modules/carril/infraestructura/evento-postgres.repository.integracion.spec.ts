@@ -30,6 +30,9 @@ describe('EventoPostgresRepository (integración)', () => {
       [sede.id, 'Carril prueba eventos'],
     );
     carrilId = String(carril.id);
+    await origen.query(
+      "INSERT INTO usuario (nombre, hash_contrasena, rol) VALUES ('operador-eventos', 'hash-prueba', 'OPERADOR')",
+    );
   });
 
   afterAll(async () => {
@@ -66,6 +69,7 @@ describe('EventoPostgresRepository (integración)', () => {
     expect(filas[0].confianza).toBeCloseTo(0.93);
     expect(filas[0].origen).toBe('OCR');
     expect(filas[0].lectura_manual).toBe(false);
+    expect(filas[0].operador).toBeNull();
     expect(new Date(filas[0].ocurrido_en).getTime()).toBe(ocurridoEn.getTime());
   });
 
@@ -81,6 +85,7 @@ describe('EventoPostgresRepository (integración)', () => {
         confianza: null,
         origen: 'MANUAL',
         lecturaManual: true,
+        operador: 'operador-eventos',
         ocurridoEn: new Date('2026-11-17T20:00:00.000Z'),
       }),
     );
@@ -92,6 +97,7 @@ describe('EventoPostgresRepository (integración)', () => {
     expect(filas[0].confianza).toBeNull();
     expect(filas[0].origen).toBe('MANUAL');
     expect(filas[0].lectura_manual).toBe(true);
+    expect(filas[0].operador).toBe('operador-eventos');
     expect(filas[0].resultado).toBe('REQUIERE_LECTURA_MANUAL');
   });
 });

@@ -25,12 +25,14 @@ export class ProcesarIngreso {
     sedeId: number,
     carrilId: number,
     solicitud: SolicitudLectura,
+    operador?: string,
   ): Promise<ResultadoIngreso> {
     const lectura = await this.lector.leer(solicitud);
     const resultado = await this.transaccion.ejecutar({
       sedeId,
       carrilId,
       lectura,
+      operador,
       ocurridoEn: this.reloj.ahora(),
     });
     const actual = await this.estado.obtener();

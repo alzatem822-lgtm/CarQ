@@ -140,6 +140,7 @@ export class TransaccionIngresoPostgres extends TransaccionIngreso {
               ? lectura.confianza
               : null,
           origen: lectura.origen,
+          operador: solicitud.operador,
           lecturaManual: lectura.origen === 'MANUAL',
           ocurridoEn,
         }),

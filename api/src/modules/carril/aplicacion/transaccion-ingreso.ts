@@ -6,6 +6,7 @@ export interface SolicitudIngreso {
   carrilId: number;
   lectura: LecturaPlaca;
   ocurridoEn: Date;
+  operador?: string;
 }
 
 export interface ResultadoIngreso {

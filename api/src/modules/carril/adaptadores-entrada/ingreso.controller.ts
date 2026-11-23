@@ -5,6 +5,8 @@ import {
   HttpCode,
   Inject,
   Post,
+  Req,
+  UnauthorizedException,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -31,7 +33,10 @@ import {
 import { Transform } from 'class-transformer';
 import { ApiErrores } from '../../../compartido/documentacion/api-errores';
 import { RolesPermitidos } from '../../acceso/adaptadores-entrada/decorador-roles';
-import { GuardAutenticacionJwt } from '../../acceso/adaptadores-entrada/guard-autenticacion-jwt';
+import {
+  GuardAutenticacionJwt,
+  type SolicitudAutenticada,
+} from '../../acceso/adaptadores-entrada/guard-autenticacion-jwt';
 import { GuardRoles } from '../../acceso/adaptadores-entrada/guard-roles';
 import { Rol } from '../../acceso/dominio/rol';
 import { ProcesarIngreso } from '../aplicacion/procesar-ingreso';
@@ -104,8 +109,10 @@ export class IngresoController {
   @ApiErrores({ cuerpo: true, dominio: true, rol: 'OPERADOR' })
   async ingresar(
     @Body() dto: IngresoDto,
+    @Req() solicitud: SolicitudAutenticada,
     @UploadedFile() imagen?: { buffer: Buffer },
   ): Promise<IngresoRespuestaDto> {
+    if (!solicitud.usuario) throw new UnauthorizedException();
     if (imagen && dto.placa !== undefined)
       throw new BadRequestException('Envía una imagen o una placa, no ambas');
     if (imagen && dto.confianza !== undefined)
@@ -113,9 +120,14 @@ export class IngresoController {
         'La confianza de una imagen la determina el lector',
       );
     const { sedeId, carrilId } = await this.resolverCarril();
-    return this.procesar.ejecutar(sedeId, carrilId, {
-      ...dto,
-      imagen: imagen?.buffer,
-    });
+    return this.procesar.ejecutar(
+      sedeId,
+      carrilId,
+      {
+        ...dto,
+        imagen: imagen?.buffer,
+      },
+      solicitud.usuario.nombre,
+    );
   }
 }

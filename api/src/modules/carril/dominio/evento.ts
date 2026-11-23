@@ -22,6 +22,7 @@ export type DatosEvento = {
   readonly confianza: number | null;
   readonly origen: OrigenLectura;
   readonly lecturaManual: boolean;
+  readonly operador?: string | null;
   readonly ocurridoEn: Date;
 };
 
@@ -40,6 +41,7 @@ export class Evento {
   readonly confianza: number | null;
   readonly origen: OrigenLectura;
   readonly lecturaManual: boolean;
+  readonly operador: string | null;
   readonly ocurridoEn: Date;
 
   private constructor(datos: DatosEvento) {
@@ -52,12 +54,16 @@ export class Evento {
     this.confianza = datos.confianza;
     this.origen = datos.origen;
     this.lecturaManual = datos.lecturaManual;
+    this.operador = datos.operador?.trim() ?? null;
     this.ocurridoEn = datos.ocurridoEn;
   }
 
   static crear(datos: DatosEvento): Evento {
     if (datos.motivo.trim() === '') {
-      throw new ErrorDominio('EVENTO_MOTIVO_INVALIDO', 'El evento requiere un motivo');
+      throw new ErrorDominio(
+        'EVENTO_MOTIVO_INVALIDO',
+        'El evento requiere un motivo',
+      );
     }
     if (
       datos.confianza !== null &&
@@ -66,6 +72,16 @@ export class Evento {
       throw new ErrorDominio(
         'EVENTO_CONFIANZA_INVALIDA',
         'La confianza del evento debe estar entre 0 y 1',
+      );
+    }
+    const operador = datos.operador?.trim();
+    if (
+      ((datos.lecturaManual || datos.origen === 'MANUAL') && !operador) ||
+      (datos.operador != null && (!operador || operador.length > 100))
+    ) {
+      throw new ErrorDominio(
+        'EVENTO_OPERADOR_INVALIDO',
+        'El evento manual requiere la identidad de un operador válido',
       );
     }
     return new Evento(datos);
