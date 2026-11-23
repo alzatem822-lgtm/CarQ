@@ -51,6 +51,8 @@ describe('Ingreso HTTP con transacciones PostgreSQL reales', () => {
       NODE_ENV: 'test',
       URL_BASE_DATOS: process.env.URL_BASE_DATOS_PRUEBAS,
       URL_REDIS: process.env.URL_REDIS_PRUEBAS,
+      ZONA_HORARIA: 'America/Bogota',
+      INICIO_DIA_OPERATIVO: '06:00',
       FUENTE_SENSOR: 'simulado',
       LECTOR_PLACAS: 'simulado',
       JWT_SECRETO: SECRETO,
@@ -85,14 +87,23 @@ describe('Ingreso HTTP con transacciones PostgreSQL reales', () => {
     if (db?.isInitialized) await db.destroy();
   });
 
-  it('autoriza y registra cobro, estancia y evento; publica lectura y ordena apertura', async () => {
+  it('CARQ-206: carro de día genera cobro pendiente con tarifa diurna y autoriza el ingreso', async () => {
     await ingresar().expect(200, {
       resultado: 'AUTORIZADO',
       motivo: 'Ingreso autorizado',
     });
     expect(await contar()).toEqual({ cobros: 1, estancias: 1, eventos: 1 });
-    const [cobro] = await db.query('SELECT tarifa_aplicada, estado FROM cobro');
-    expect(cobro).toMatchObject({ tarifa_aplicada: 5000, estado: 'PENDIENTE' });
+    const [cobro] = await db.query(
+      'SELECT placa, tipo_vehiculo, dia_operativo::text, franja, tarifa_aplicada, estado FROM cobro',
+    );
+    expect(cobro).toEqual({
+      placa: 'ABC123',
+      tipo_vehiculo: 'CARRO',
+      dia_operativo: '2026-11-23',
+      franja: 'DIURNA',
+      tarifa_aplicada: 5000,
+      estado: 'PENDIENTE',
+    });
     expect(barrera.abrir).toHaveBeenCalledTimes(1);
     expect(
       (await app.get(EstadoCarrilStore).obtener()).ultimaLectura,
@@ -147,6 +158,65 @@ describe('Ingreso HTTP con transacciones PostgreSQL reales', () => {
     expect(await contar()).toEqual({ cobros: 0, estancias: 0, eventos: 1 });
     expect(barrera.abrir).not.toHaveBeenCalled();
   });
+  it.each([
+    { tipo: 'CARRO', primera: 'ABC123', segunda: 'DEF456', cobros: 1 },
+    { tipo: 'MOTO', primera: 'ABC12D', segunda: 'DEF45G', cobros: 0 },
+  ])(
+    'CARQ-210: llena el cupo de $tipo por API y rechaza otro ingreso sin ordenar apertura',
+    async ({ tipo, primera, segunda, cobros }) => {
+      await db.query('UPDATE cupo SET maximo = 1 WHERE tipo = $1', [tipo]);
+      await ingresar(primera).expect(200, {
+        resultado: 'AUTORIZADO',
+        motivo: 'Ingreso autorizado',
+      });
+      expect(barrera.abrir).toHaveBeenCalledTimes(1);
+      const ocupacion = await request(app.getHttpServer())
+        .get('/carril/ocupacion')
+        .auth(token(), { type: 'bearer' })
+        .expect(200);
+      expect(ocupacion.body.cupos).toContainEqual({
+        tipoVehiculo: tipo,
+        ocupacion: 1,
+        maximo: 1,
+      });
+
+      await ingresar(segunda).expect(200, {
+        resultado: 'RECHAZADO',
+        motivo: 'LLENO',
+      });
+      expect(barrera.abrir).toHaveBeenCalledTimes(1);
+      expect(barrera.denegar).toHaveBeenCalledTimes(1);
+      expect(barrera.denegar).toHaveBeenCalledWith('LLENO');
+      expect(await contar()).toEqual({ cobros, estancias: 1, eventos: 2 });
+      const estancias = await db.query(
+        'SELECT placa FROM estancia WHERE salida_en IS NULL',
+      );
+      expect(estancias).toEqual([{ placa: primera }]);
+      const [rechazo] = await db.query(
+        'SELECT placa, sentido, resultado, motivo FROM evento WHERE placa = $1',
+        [segunda],
+      );
+      expect(rechazo).toEqual({
+        placa: segunda,
+        sentido: 'ENTRADA',
+        resultado: 'RECHAZADO',
+        motivo: 'LLENO',
+      });
+      const estado = await request(app.getHttpServer())
+        .get('/carril/estado')
+        .auth(token(), { type: 'bearer' })
+        .expect(200);
+      expect(estado.body.ultimoResultado).toEqual({
+        resultado: 'RECHAZADO',
+        motivo: 'LLENO',
+      });
+      const posterior = await request(app.getHttpServer())
+        .get('/carril/ocupacion')
+        .auth(token(), { type: 'bearer' })
+        .expect(200);
+      expect(posterior.body.cupos).toEqual(ocupacion.body.cupos);
+    },
+  );
   it('protege el último cupo ante dos solicitudes concurrentes', async () => {
     await db.query("UPDATE cupo SET maximo = 1 WHERE tipo = 'CARRO'");
     const respuestas = await Promise.all([
