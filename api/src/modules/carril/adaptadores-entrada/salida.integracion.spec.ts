@@ -95,7 +95,8 @@ describe('Salida HTTP con transacciones PostgreSQL reales', () => {
       .post('/carril/ingreso')
       .auth(token(), { type: 'bearer' })
       .send({ placa, confianza: 0.95 })
-      .expect(200);
+      .expect(200, { resultado: 'AUTORIZADO', motivo: 'Ingreso autorizado' });
+    expect(barrera.abrir).toHaveBeenCalledTimes(1);
     barrera.abrir.mockClear();
   }
   it('autoriza la salida pagada, cierra estancia y registra operador', async () => {
@@ -115,15 +116,26 @@ describe('Salida HTTP con transacciones PostgreSQL reales', () => {
     ).toEqual([{ operador: 'operador', resultado: 'AUTORIZADO' }]);
     expect(barrera.abrir).toHaveBeenCalledTimes(1);
   });
-  it('autoriza salida gratuita sin cobro', async () => {
+  it('CARQ-205: moto entra y sale sin cobro con ambas operaciones autorizadas', async () => {
     await prepararIngreso('ABC12D');
+    // prepararIngreso verifica la respuesta por API y limpia la apertura inicial.
     await salir('ABC12D').expect(200, {
       resultado: 'AUTORIZADO',
       motivo: 'Sin cobro exigible',
     });
     expect(await contar()).toEqual({ cobros: 0, estancias: 1, eventos: 2 });
+    expect(barrera.abrir).toHaveBeenCalledTimes(1);
+    expect(
+      await db.query('SELECT sentido, resultado FROM evento ORDER BY id'),
+    ).toEqual([
+      { sentido: 'ENTRADA', resultado: 'AUTORIZADO' },
+      { sentido: 'SALIDA', resultado: 'AUTORIZADO' },
+    ]);
+    expect(
+      (await db.query('SELECT salida_en FROM estancia'))[0].salida_en,
+    ).not.toBeNull();
   });
-  it('devuelve rechazo de negocio con 200 y conserva estancia ante deuda', async () => {
+  it('CARQ-207: salida con deuda devuelve el motivo y no ordena apertura ni cierra estancia', async () => {
     await prepararIngreso();
     await salir().expect(200, {
       resultado: 'RECHAZADO',
@@ -137,6 +149,74 @@ describe('Salida HTTP con transacciones PostgreSQL reales', () => {
       'Cobro pendiente, pasar por caja',
     );
   });
+  it('CARQ-208: pago por Caja, salida y reingreso conservan un solo cobro y pago', async () => {
+    await prepararIngreso();
+    const consulta = await request(app.getHttpServer())
+      .get('/cobros/pendientes')
+      .auth(token(), { type: 'bearer' })
+      .query({ placa: 'ABC123' })
+      .expect(200);
+    expect(consulta.body.cobros).toHaveLength(1);
+    const original = consulta.body.cobros[0];
+    expect(original).toMatchObject({
+      placa: 'ABC123',
+      estado: 'PENDIENTE',
+      tarifaAplicada: 5000,
+    });
+    const pago = await request(app.getHttpServer())
+      .post('/pagos/efectivo')
+      .auth(token(), { type: 'bearer' })
+      .send({ cobroId: original.id, referencia: 'carq-208-flujo-completo' })
+      .expect(200);
+    expect(pago.body).toMatchObject({
+      cobro: { id: original.id, estado: 'PAGADO' },
+      pago: { monto: 5000, operador: 'operador' },
+    });
+    await salir().expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Cobro pagado',
+    });
+    expect(barrera.abrir).toHaveBeenCalledTimes(1);
+    expect(
+      (
+        await db.query(
+          'SELECT count(*)::int total FROM estancia WHERE salida_en IS NULL',
+        )
+      )[0].total,
+    ).toBe(0);
+    await request(app.getHttpServer())
+      .post('/carril/ingreso')
+      .auth(token(), { type: 'bearer' })
+      .send({ placa: 'ABC123', confianza: 0.95 })
+      .expect(200, { resultado: 'AUTORIZADO', motivo: 'Ingreso autorizado' });
+    expect(barrera.abrir).toHaveBeenCalledTimes(2);
+    expect(
+      await db.query('SELECT id, estado, tarifa_aplicada FROM cobro'),
+    ).toEqual([
+      {
+        id: original.id,
+        estado: 'PAGADO',
+        tarifa_aplicada: original.tarifaAplicada,
+      },
+    ]);
+    expect(await db.query('SELECT cobro_id, referencia FROM pago')).toEqual([
+      { cobro_id: original.id, referencia: 'carq-208-flujo-completo' },
+    ]);
+    expect(
+      await db.query('SELECT salida_en FROM estancia ORDER BY id'),
+    ).toEqual([
+      { salida_en: new Date('2026-11-23T15:00:00Z') },
+      { salida_en: null },
+    ]);
+    expect(
+      await db.query('SELECT sentido, resultado FROM evento ORDER BY id'),
+    ).toEqual([
+      { sentido: 'ENTRADA', resultado: 'AUTORIZADO' },
+      { sentido: 'SALIDA', resultado: 'AUTORIZADO' },
+      { sentido: 'ENTRADA', resultado: 'AUTORIZADO' },
+    ]);
+  });
+
   it('rechaza salida sin ingreso', async () => {
     await salir().expect(200, {
       resultado: 'RECHAZADO',
