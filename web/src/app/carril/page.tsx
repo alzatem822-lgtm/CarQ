@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Cabecera } from "@/componentes/Cabecera";
 import { Icono } from "@/componentes/Icono";
+import { InsigniaEstado } from "@/componentes/interfaz/InsigniaEstado";
 import { useEstadoCarril } from "@/lib/usar-estado-carril";
 import estilos from "./Carril.module.css";
 
@@ -137,10 +138,46 @@ export default function CarrilPage() {
               </div>
               <Icono nombre="carril" size={22} />
             </header>
-            <p className={estilos.sinDatos}>Indicador pendiente</p>
-            <p className={estilos.descripcion}>
-              La visualización de la barrera aún no está disponible.
-            </p>
+            <div
+              className={estilos.estadoBarrera}
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {estado && !error ? (
+                <>
+                  <InsigniaEstado
+                    estado={
+                      estado.barrera.estado === "ABIERTA"
+                        ? "barreraAbierta"
+                        : "barreraCerrada"
+                    }
+                  />
+                  <p
+                    className={`${estilos.valorBarrera} ${estado.barrera.estado === "ABIERTA" ? estilos.abierta : estilos.cerrada}`}
+                  >
+                    {estado.barrera.estado === "ABIERTA"
+                      ? "Abierta"
+                      : "Cerrada"}
+                  </p>
+                  <p className={estilos.motivoBarrera}>
+                    <span>Motivo</span>
+                    {estado.barrera.motivo ?? "Sin motivo informado"}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className={estilos.sinDatos}>
+                    {cargando ? "Consultando barrera…" : "Estado no disponible"}
+                  </p>
+                  <p className={estilos.descripcion}>
+                    {cargando
+                      ? "Esperando el estado actual del carril."
+                      : "No se puede confirmar el estado de la barrera. Reintentando conexión…"}
+                  </p>
+                </>
+              )}
+            </div>
           </section>
           <section className={estilos.panel} aria-labelledby="titulo-cupos">
             <header className={estilos.encabezadoPanel}>

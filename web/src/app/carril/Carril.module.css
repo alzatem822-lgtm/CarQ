@@ -317,3 +317,29 @@
 .conexion svg {
   color: var(--oro);
 }
+.estadoBarrera {
+  margin-top: 22px;
+}
+.valorBarrera {
+  margin-top: 10px;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.abierta {
+  color: var(--verde);
+}
+.cerrada {
+  color: var(--rojo);
+}
+.motivoBarrera {
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.motivoBarrera span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--suave);
+  font-size: 11px;
+}
