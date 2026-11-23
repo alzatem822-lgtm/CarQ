@@ -1,3 +1,10 @@
+import type { Redis } from 'ioredis';
+import { CLIENTE_REDIS } from '../../compartido/redis/modulo-redis';
+import { PaseVigenteRepository } from '../cobros/aplicacion/pase-vigente.repository';
+import { PaseVigenteRedisRepository } from '../cobros/infraestructura/pase-vigente-redis.repository';
+import { ProcesarSalida } from './aplicacion/procesar-salida';
+import { TransaccionSalida } from './aplicacion/transaccion-salida';
+import { TransaccionSalidaPostgres } from './infraestructura/transaccion-salida-postgres';
 import { Module } from '@nestjs/common';
 import { Reloj } from '../../compartido/reloj/reloj';
 import { RelojSistema } from '../../compartido/reloj/reloj-sistema';
@@ -34,6 +41,47 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
   imports: [ConfiguracionModule, AccesoModule, VehiculosModule],
   controllers: [OcupacionController, EstadoCarrilController, IngresoController],
   providers: [
+    {
+      provide: PaseVigenteRepository,
+      useFactory: (redis: Redis, reloj: Reloj) =>
+        new PaseVigenteRedisRepository(redis, reloj),
+      inject: [CLIENTE_REDIS, Reloj],
+    },
+    {
+      provide: TransaccionSalida,
+      useFactory: (
+        origen: DataSource,
+        config: ConfiguracionSistema,
+        pases: PaseVigenteRepository,
+      ) =>
+        new TransaccionSalidaPostgres(
+          origen,
+          new DiaOperativo(
+            config.obtener('ZONA_HORARIA'),
+            config.obtener('INICIO_DIA_OPERATIVO'),
+          ),
+          new ResolverFranja(config.obtener('ZONA_HORARIA')),
+          pases,
+        ),
+      inject: [DataSource, ConfiguracionSistema, PaseVigenteRepository],
+    },
+    {
+      provide: ProcesarSalida,
+      useFactory: (
+        lector: LectorPlaca,
+        reloj: Reloj,
+        transaccion: TransaccionSalida,
+        estado: EstadoCarrilStore,
+        barrera: BarreraCarril,
+      ) => new ProcesarSalida(lector, reloj, transaccion, estado, barrera),
+      inject: [
+        LectorPlaca,
+        Reloj,
+        TransaccionSalida,
+        EstadoCarrilStore,
+        BarreraCarril,
+      ],
+    },
     { provide: Reloj, useClass: RelojSistema },
     {
       provide: TransaccionIngreso,
