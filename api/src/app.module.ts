@@ -8,6 +8,7 @@ import { AccesoModule } from './modules/acceso/acceso.module';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { CarrilModule } from './modules/carril/carril.module';
 import { CobrosModule } from './modules/cobros/cobros.module';
+import { ConsultaModule } from './modules/consulta/consulta.module';
 import { registrarConSensorSimulado } from './compartido/configuracion/registrar-con-sensor-simulado';
 import { SimulacionCarrilModule } from './modules/carril/simulacion-carril.module';
 
@@ -23,6 +24,7 @@ import { SimulacionCarrilModule } from './modules/carril/simulacion-carril.modul
     CarrilModule,
     registrarConSensorSimulado(SimulacionCarrilModule),
     CobrosModule,
+    ConsultaModule,
   ],
 })
 export class AppModule {}

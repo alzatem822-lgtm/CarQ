@@ -1,6 +1,7 @@
 import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 
-export type CodigoEstadoCobro = 'PENDIENTE' | 'PAGADO' | 'ANULADO';
+export const ESTADOS_COBRO = ['PENDIENTE', 'PAGADO', 'ANULADO'] as const;
+export type CodigoEstadoCobro = (typeof ESTADOS_COBRO)[number];
 
 interface EstadoCobro {
   transicionar(destino: CodigoEstadoCobro): CodigoEstadoCobro;
