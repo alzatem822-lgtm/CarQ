@@ -547,6 +547,51 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     }
   });
 
+  it('mantiene un solo pago y una sola transición al repetir la referencia (CARQ-213)', async () => {
+    const [{ id: cobroId, version: versionInicial }] = await db!.query<
+      { id: number; version: string }[]
+    >(
+      `INSERT INTO cobro
+         (placa, tipo_vehiculo, sede_id, dia_operativo, franja, tarifa_aplicada)
+       SELECT 'CAR213', 'CARRO', id, '2026-11-19', 'DIURNA', 5000
+       FROM sede WHERE nombre = 'Sede principal'
+       RETURNING id, xmin::text AS version`,
+    );
+    const referencia = 'carq-213-pago-efectivo';
+    const pagar = () =>
+      request(servidor())
+        .post('/pagos/efectivo')
+        .set('Authorization', `Bearer ${tokenOperador}`)
+        .send({ cobroId, referencia })
+        .expect(200);
+    const leerCobro = async () => {
+      const [cobro] = await db!.query<{ estado: string; version: string }[]>(
+        'SELECT estado, xmin::text AS version FROM cobro WHERE id = $1',
+        [cobroId],
+      );
+      return cobro;
+    };
+
+    const primero = await pagar();
+    expect(primero.body).toMatchObject({
+      cobro: { id: cobroId, estado: 'PAGADO' },
+      pago: { referencia, monto: 5000 },
+    });
+    const pagado = await leerCobro();
+    expect(pagado.estado).toBe('PAGADO');
+    expect(pagado.version).not.toBe(versionInicial);
+
+    const segundo = await pagar();
+    expect(segundo.body).toEqual(primero.body);
+    // La versión de PostgreSQL cambia solo si se vuelve a escribir el cobro.
+    await expect(leerCobro()).resolves.toEqual(pagado);
+    const pagos = await db!.query<{ id: number; referencia: string }[]>(
+      'SELECT id, referencia FROM pago WHERE cobro_id = $1',
+      [cobroId],
+    );
+    expect(pagos).toEqual([{ id: primero.body.pago.id, referencia }]);
+  });
+
   it('sirve Swagger y refleja todas las rutas de la aplicación real', async () => {
     const r = await request(servidor()).get('/docs-json');
     expect(r.status).toBe(200);
