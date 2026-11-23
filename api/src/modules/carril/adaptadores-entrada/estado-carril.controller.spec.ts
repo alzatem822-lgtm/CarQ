@@ -8,15 +8,18 @@ import { ConsultarEstadoCarril } from '../aplicacion/consultar-estado-carril';
 import { EstadoCarril, estadoCarrilInicial } from '../dominio/estado-carril';
 import { EstadoCarrilEnMemoriaStore } from '../infraestructura/estado-carril-en-memoria.store';
 import { EstadoCarrilController } from './estado-carril.controller';
+import { ConfiguracionSistema } from '../../../compartido/configuracion/configuracion-sistema';
 
 describe('GET /carril/estado', () => {
   let app: INestApplication;
   const estado = new EstadoCarrilEnMemoriaStore();
+  const configuracion = { obtener: jest.fn(() => 'simulado') };
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
       controllers: [EstadoCarrilController],
       providers: [
+        { provide: ConfiguracionSistema, useValue: configuracion },
         {
           provide: ConsultarEstadoCarril,
           useValue: new ConsultarEstadoCarril(estado),
@@ -44,6 +47,7 @@ describe('GET /carril/estado', () => {
   });
 
   beforeEach(async () => {
+    configuracion.obtener.mockReturnValue('simulado');
     await estado.guardar(estadoCarrilInicial());
   });
 
@@ -57,7 +61,7 @@ describe('GET /carril/estado', () => {
       .get('/carril/estado')
       .set('Authorization', 'Bearer operador')
       .expect('Cache-Control', 'no-store')
-      .expect(200, estadoCarrilInicial());
+      .expect(200, { ...estadoCarrilInicial(), simulacionHabilitada: true });
     const documento = await request(app.getHttpServer()).get('/docs-json');
     expect(documento.body.paths['/carril/estado'].get).toMatchObject({
       operationId: 'consultarEstadoCarril',
@@ -82,7 +86,7 @@ describe('GET /carril/estado', () => {
     await request(app.getHttpServer())
       .get('/carril/estado')
       .set('Authorization', 'Bearer operador')
-      .expect(200, actual);
+      .expect(200, { ...actual, simulacionHabilitada: true });
     expect(await estado.obtener()).toEqual(actual);
   });
 
@@ -101,6 +105,15 @@ describe('GET /carril/estado', () => {
       expect(obtener).not.toHaveBeenCalled();
     },
   );
+
+  it('informa que la simulación no está habilitada con sensor MQTT', async () => {
+    configuracion.obtener.mockReturnValue('mqtt');
+    await request(app.getHttpServer())
+      .get('/carril/estado')
+      .set('Authorization', 'Bearer operador')
+      .expect(200, { ...estadoCarrilInicial(), simulacionHabilitada: false });
+    expect(configuracion.obtener).toHaveBeenCalledWith('FUENTE_SENSOR');
+  });
 
   it('responde 500 si falla la lectura sin inventar un carril libre', async () => {
     jest

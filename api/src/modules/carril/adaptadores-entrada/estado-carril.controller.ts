@@ -6,6 +6,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiErrores } from '../../../compartido/documentacion/api-errores';
+import { ConfiguracionSistema } from '../../../compartido/configuracion/configuracion-sistema';
 import { RolesPermitidos } from '../../acceso/adaptadores-entrada/decorador-roles';
 import { GuardAutenticacionJwt } from '../../acceso/adaptadores-entrada/guard-autenticacion-jwt';
 import { GuardRoles } from '../../acceso/adaptadores-entrada/guard-roles';
@@ -19,7 +20,10 @@ import { EstadoCarrilRespuestaDto } from './estado-carril-respuesta.dto';
 @ApiBearerAuth('sesion')
 @ApiTags('Carril')
 export class EstadoCarrilController {
-  constructor(private readonly consultarEstado: ConsultarEstadoCarril) {}
+  constructor(
+    private readonly consultarEstado: ConsultarEstadoCarril,
+    private readonly configuracion: ConfiguracionSistema,
+  ) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
@@ -32,6 +36,10 @@ export class EstadoCarrilController {
   @ApiOkResponse({ type: EstadoCarrilRespuestaDto })
   @ApiErrores({ rol: 'OPERADOR' })
   async consultar(): Promise<EstadoCarrilRespuestaDto> {
-    return this.consultarEstado.ejecutar();
+    return {
+      ...(await this.consultarEstado.ejecutar()),
+      simulacionHabilitada:
+        this.configuracion.obtener('FUENTE_SENSOR') === 'simulado',
+    };
   }
 }

@@ -522,7 +522,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
           .get('/carril/estado')
           .set('Authorization', `Bearer ${tokenOperador}`)
           .expect('Cache-Control', 'no-store')
-          .expect(200, actual);
+          .expect(200, { ...actual, simulacionHabilitada: true });
         duraciones.push(performance.now() - inicio);
       }
       const maximo = Math.max(...duraciones);
