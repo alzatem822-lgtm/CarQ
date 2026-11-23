@@ -34,6 +34,12 @@ class BarreraEstadoDto {
 }
 
 export class EstadoCarrilRespuestaDto {
+  @ApiProperty({
+    example: true,
+    description: 'Indica si está habilitada la simulación de llegada.',
+  })
+  simulacionHabilitada!: boolean;
+
   @ApiProperty({ example: false })
   vehiculoPresente!: boolean;
 

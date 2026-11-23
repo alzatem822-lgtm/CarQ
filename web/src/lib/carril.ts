@@ -15,6 +15,7 @@ export function consultarOcupacionCarril(
 }
 
 export interface EstadoCarril {
+  readonly simulacionHabilitada: boolean;
   readonly vehiculoPresente: boolean;
   readonly sentido: "ENTRADA" | "SALIDA" | null;
   readonly ultimaLectura: {
@@ -31,6 +32,12 @@ export interface EstadoCarril {
     readonly motivo: string | null;
   };
   readonly requiereValidacionManual: boolean;
+}
+
+export function simularLlegadaCarril(
+  signal: AbortSignal,
+): Promise<{ vehiculoPresente: true }> {
+  return peticion("/carril/simulacion/llegada", { method: "POST", signal });
 }
 
 export function consultarEstadoCarril(

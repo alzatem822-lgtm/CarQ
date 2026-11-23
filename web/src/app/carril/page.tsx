@@ -8,6 +8,7 @@ import { useEstadoCarril } from "@/lib/usar-estado-carril";
 import { useOcupacionCarril } from "@/lib/usar-ocupacion-carril";
 import type { EstadoCarril } from "@/lib/carril";
 import estilos from "./Carril.module.css";
+import { PanelSimulacion } from "./PanelSimulacion";
 
 type SentidoCarril = "ENTRADA" | "SALIDA";
 
@@ -131,6 +132,7 @@ export default function CarrilPage() {
                 : "Carril libre"))}
         </p>
       </section>
+      {estado?.simulacionHabilitada === true && !error && <PanelSimulacion />}
       <fieldset className={estilos.selector}>
         <legend>Sentido del carril</legend>
         <div className={estilos.opciones}>
