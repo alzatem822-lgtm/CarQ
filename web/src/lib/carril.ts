@@ -45,3 +45,21 @@ export function consultarEstadoCarril(
 ): Promise<EstadoCarril> {
   return peticion("/carril/estado", { signal, cache: "no-store" });
 }
+
+/** Envía el fotograma sin fijar Content-Type: el navegador agrega el boundary. */
+export function procesarImagenCarril(
+  sentido: "ENTRADA" | "SALIDA",
+  imagen: Blob,
+  signal: AbortSignal,
+): Promise<NonNullable<EstadoCarril["ultimoResultado"]>> {
+  const cuerpo = new FormData();
+  cuerpo.append("imagen", imagen, "captura.jpg");
+  return peticion(
+    sentido === "ENTRADA" ? "/carril/ingreso" : "/carril/salida",
+    {
+      method: "POST",
+      body: cuerpo,
+      signal,
+    },
+  );
+}

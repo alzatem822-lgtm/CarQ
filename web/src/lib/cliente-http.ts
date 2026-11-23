@@ -1,6 +1,6 @@
-import { limpiarSesion, obtenerToken } from './sesion';
+import { limpiarSesion, obtenerToken } from "./sesion";
 
-const URL_API = process.env.NEXT_PUBLIC_URL_API ?? 'http://localhost:3001';
+const URL_API = process.env.NEXT_PUBLIC_URL_API ?? "http://localhost:3001";
 
 export class ErrorApi extends Error {
   constructor(
@@ -8,7 +8,7 @@ export class ErrorApi extends Error {
     readonly cuerpo: unknown,
   ) {
     super(`Error ${estado} de la API`);
-    this.name = 'ErrorApi';
+    this.name = "ErrorApi";
   }
 }
 
@@ -18,8 +18,9 @@ export async function peticion<T>(
 ): Promise<T> {
   const token = obtenerToken();
   const headers = new Headers(opciones.headers);
-  if (opciones.body) headers.set('Content-Type', 'application/json');
-  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (opciones.body instanceof FormData) headers.delete("Content-Type");
+  else if (opciones.body) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const respuesta = await fetch(`${URL_API}${ruta}`, {
     ...opciones,
@@ -38,7 +39,7 @@ export async function peticion<T>(
     limpiarSesion();
     // Fuera de React no hay router; la recarga completa también reinicia el estado.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.assign('/login');
+    window.location.assign("/login");
   }
 
   const cuerpo: unknown = await respuesta.json().catch(() => null);

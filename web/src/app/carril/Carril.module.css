@@ -367,3 +367,25 @@
   display: block;
   margin-top: 8px;
 }
+
+.videoCamara {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #111;
+}
+.videoCamara[hidden] {
+  display: none;
+}
+.controlesCamara {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.capturaCamara {
+  min-width: 0;
+}
