@@ -76,17 +76,42 @@ describe('BarreraSimulada', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it('no mueve una barrera abierta al denegar y mantiene el cierre automático', async () => {
+  it.each(['LLENO', 'Cobro pendiente', 'Ingreso ya registrado'])(
+    'rechaza con %s sin cerrar antes ni prolongar la apertura anterior',
+    async (motivo) => {
+      await barrera.abrir('Ingreso autorizado');
+      await jest.advanceTimersByTimeAsync(4000);
+      await barrera.denegar(motivo);
+      expect(await barrera.consultarEstado()).toEqual({
+        estado: 'ABIERTA',
+        motivo,
+      });
+      expect(jest.getTimerCount()).toBe(1);
+
+      await jest.advanceTimersByTimeAsync(999);
+      expect((await barrera.consultarEstado()).estado).toBe('ABIERTA');
+      await jest.advanceTimersByTimeAsync(1);
+      expect(await barrera.consultarEstado()).toEqual({
+        estado: 'CERRADA',
+        motivo,
+      });
+      expect(jest.getTimerCount()).toBe(0);
+    },
+  );
+
+  it('los rechazos repetidos no reinician el plazo ni abren al terminar el ciclo', async () => {
     await barrera.abrir('Ingreso autorizado');
-    await barrera.denegar('Cobro pendiente');
-    expect((await barrera.consultarEstado()).estado).toBe('ABIERTA');
-
-    await jest.advanceTimersByTimeAsync(5000);
-
+    for (let intento = 0; intento < 4; intento++) {
+      await jest.advanceTimersByTimeAsync(1000);
+      await barrera.denegar('LLENO');
+    }
+    await jest.advanceTimersByTimeAsync(1000);
+    await barrera.denegar('LLENO');
     expect(await barrera.consultarEstado()).toEqual({
       estado: 'CERRADA',
-      motivo: 'Cobro pendiente',
+      motivo: 'LLENO',
     });
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   it('reinicia el plazo al recibir una nueva apertura', async () => {
