@@ -1,3 +1,4 @@
+import { SalidaController } from './adaptadores-entrada/salida.controller';
 import type { Redis } from 'ioredis';
 import { CLIENTE_REDIS } from '../../compartido/redis/modulo-redis';
 import { PaseVigenteRepository } from '../cobros/aplicacion/pase-vigente.repository';
@@ -39,7 +40,12 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
 
 @Module({
   imports: [ConfiguracionModule, AccesoModule, VehiculosModule],
-  controllers: [OcupacionController, EstadoCarrilController, IngresoController],
+  controllers: [
+    OcupacionController,
+    EstadoCarrilController,
+    IngresoController,
+    SalidaController,
+  ],
   providers: [
     {
       provide: PaseVigenteRepository,
