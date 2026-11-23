@@ -1,4 +1,14 @@
 import { Module } from '@nestjs/common';
+import { Reloj } from '../../compartido/reloj/reloj';
+import { RelojSistema } from '../../compartido/reloj/reloj-sistema';
+import { DiaOperativo } from '../../compartido/tiempo/dia-operativo';
+import { ResolverFranja } from '../configuracion/dominio/resolver-franja';
+import { VehiculosModule } from '../vehiculos/vehiculos.module';
+import { LectorPlaca } from '../vehiculos/aplicacion/lector-placa';
+import { ProcesarIngreso } from './aplicacion/procesar-ingreso';
+import { TransaccionIngreso } from './aplicacion/transaccion-ingreso';
+import { TransaccionIngresoPostgres } from './infraestructura/transaccion-ingreso-postgres';
+import { IngresoController } from './adaptadores-entrada/ingreso.controller';
 import { ConsultarEstadoCarril } from './aplicacion/consultar-estado-carril';
 import { EstadoCarrilController } from './adaptadores-entrada/estado-carril.controller';
 import { DataSource } from 'typeorm';
@@ -21,9 +31,52 @@ import { EstanciaPostgresRepository } from './infraestructura/estancia-postgres.
 import { EventoPostgresRepository } from './infraestructura/evento-postgres.repository';
 
 @Module({
-  imports: [ConfiguracionModule, AccesoModule],
-  controllers: [OcupacionController, EstadoCarrilController],
+  imports: [ConfiguracionModule, AccesoModule, VehiculosModule],
+  controllers: [OcupacionController, EstadoCarrilController, IngresoController],
   providers: [
+    { provide: Reloj, useClass: RelojSistema },
+    {
+      provide: TransaccionIngreso,
+      useFactory: (origen: DataSource, config: ConfiguracionSistema) =>
+        new TransaccionIngresoPostgres(
+          origen,
+          new DiaOperativo(
+            config.obtener('ZONA_HORARIA'),
+            config.obtener('INICIO_DIA_OPERATIVO'),
+          ),
+          new ResolverFranja(config.obtener('ZONA_HORARIA')),
+        ),
+      inject: [DataSource, ConfiguracionSistema],
+    },
+    {
+      provide: ProcesarIngreso,
+      useFactory: (
+        lector: LectorPlaca,
+        reloj: Reloj,
+        transaccion: TransaccionIngreso,
+        estado: EstadoCarrilStore,
+        barrera: BarreraCarril,
+      ) => new ProcesarIngreso(lector, reloj, transaccion, estado, barrera),
+      inject: [
+        LectorPlaca,
+        Reloj,
+        TransaccionIngreso,
+        EstadoCarrilStore,
+        BarreraCarril,
+      ],
+    },
+    {
+      provide: 'ResolverCarrilIngreso',
+      useFactory: (origen: DataSource) => async () => {
+        const [fila]: { sede_id: number; id: number }[] = await origen.query(
+          'SELECT id, sede_id FROM carril WHERE sede_id = (SELECT id FROM sede ORDER BY id LIMIT 1) ORDER BY id LIMIT 1',
+        );
+        if (!fila)
+          throw new Error('No hay carril configurado; falta ejecutar el seed');
+        return { sedeId: fila.sede_id, carrilId: fila.id };
+      },
+      inject: [DataSource],
+    },
     {
       provide: ConsultarEstadoCarril,
       useFactory: (estado: EstadoCarrilStore) =>
