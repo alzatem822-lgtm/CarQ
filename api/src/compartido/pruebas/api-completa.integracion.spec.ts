@@ -600,6 +600,8 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       'get /auth/sesion',
       'get /cobros/pendientes',
       'post /pagos/efectivo',
+      'get /consulta/eventos',
+      'get /consulta/cobros',
       'get /carril/ocupacion',
       'get /carril/estado',
       'post /carril/ingreso',
