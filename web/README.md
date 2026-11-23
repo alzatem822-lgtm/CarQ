@@ -18,6 +18,17 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Pruebas de extremo a extremo
+
+Ejecuta estos comandos desde `web` con el frontend de Docker Compose disponible en `http://localhost:3000`.
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+Si el frontend está en otra dirección, configura `PLAYWRIGHT_BASE_URL` antes de ejecutar la prueba. La prueba de humo abre Login y verifica el formulario de acceso.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
