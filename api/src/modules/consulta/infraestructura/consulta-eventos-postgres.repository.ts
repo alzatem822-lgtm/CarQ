@@ -14,7 +14,7 @@ export class ConsultaEventosPostgresRepository extends ConsultaEventosRepository
   consultar(filtros: FiltrosConsultaEventos) {
     return consultarPaginaPostgres<EventoConsultado>(
       this.origen,
-      `SELECT id, carril_id AS "carrilId", placa, sentido, resultado, motivo,
+      `SELECT id, carril_id AS "carrilId", placa, sentido, resultado, motivo, origen,
               ocurrido_en AS "ocurridoEn"
        FROM evento`,
       'ocurrido_en DESC, id DESC',

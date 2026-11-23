@@ -2,6 +2,7 @@ import type {
   ResultadoEvento,
   SentidoEvento,
 } from '../../carril/dominio/evento';
+import type { OrigenLectura } from '../../vehiculos/dominio/lectura-placa';
 import type { Placa } from '../../vehiculos/dominio/placa';
 import type { PaginaConsulta, PaginacionConsulta } from './pagina-consulta';
 
@@ -20,6 +21,7 @@ export interface EventoConsultado {
   readonly sentido: SentidoEvento;
   readonly resultado: ResultadoEvento;
   readonly motivo: string;
+  readonly origen: OrigenLectura;
   readonly ocurridoEn: Date;
 }
 

@@ -1,4 +1,5 @@
 import { ErrorDominio } from '../../../compartido/errores/error-dominio';
+import { PlacaInvalidaError } from '../../vehiculos/dominio/placa-invalida.error';
 import { Placa } from '../../vehiculos/dominio/placa';
 import type { PaginacionConsulta } from './pagina-consulta';
 
@@ -35,7 +36,13 @@ export function validarPaginacion({
 }
 
 export function validarPlaca(placa?: string): Placa | undefined {
-  return placa === undefined ? undefined : Placa.crear(placa.trim());
+  if (placa === undefined) return undefined;
+  try {
+    return Placa.crear(placa.trim());
+  } catch (error) {
+    if (!(error instanceof PlacaInvalidaError)) throw error;
+    filtroInvalido('La placa debe tener formato de carro o moto.');
+  }
 }
 
 export function validarFechaCalendario(fecha: string): void {
