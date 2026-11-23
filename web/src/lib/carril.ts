@@ -1,5 +1,19 @@
 import { peticion } from "./cliente-http";
 
+export interface OcupacionCarril {
+  readonly cupos: {
+    readonly tipoVehiculo: string;
+    readonly ocupacion: number;
+    readonly maximo: number;
+  }[];
+}
+
+export function consultarOcupacionCarril(
+  signal: AbortSignal,
+): Promise<OcupacionCarril> {
+  return peticion("/carril/ocupacion", { signal, cache: "no-store" });
+}
+
 export interface EstadoCarril {
   readonly vehiculoPresente: boolean;
   readonly sentido: "ENTRADA" | "SALIDA" | null;

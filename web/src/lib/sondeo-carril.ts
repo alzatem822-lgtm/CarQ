@@ -1,9 +1,7 @@
-import type { EstadoCarril } from "./carril";
-
 /** Consulta al iniciar y cada segundo, sin solapar peticiones. */
-export function iniciarSondeoCarril(
-  consultar: (signal: AbortSignal) => Promise<EstadoCarril>,
-  recibir: (estado: EstadoCarril) => void,
+export function iniciarSondeoCarril<T>(
+  consultar: (signal: AbortSignal) => Promise<T>,
+  recibir: (estado: T) => void,
   fallar: (error: unknown) => void,
 ): () => void {
   const control = new AbortController();

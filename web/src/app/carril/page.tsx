@@ -3,13 +3,33 @@
 import { useState } from "react";
 import { Cabecera } from "@/componentes/Cabecera";
 import { Icono } from "@/componentes/Icono";
+import { InsigniaEstado } from "@/componentes/interfaz/InsigniaEstado";
 import { useEstadoCarril } from "@/lib/usar-estado-carril";
+import { useOcupacionCarril } from "@/lib/usar-ocupacion-carril";
+import type { EstadoCarril } from "@/lib/carril";
 import estilos from "./Carril.module.css";
 
 type SentidoCarril = "ENTRADA" | "SALIDA";
 
-function LecturaCarril({ sentido }: { sentido: SentidoCarril }) {
+function LecturaCarril({
+  sentido,
+  estado,
+  cargando,
+  error,
+}: {
+  sentido: SentidoCarril;
+  estado: EstadoCarril | null;
+  cargando: boolean;
+  error: string | null;
+}) {
   const operacion = sentido === "ENTRADA" ? "entrada" : "salida";
+  const lectura = error ? null : estado?.ultimaLectura;
+  const sinLectura = cargando
+    ? "Consultando…"
+    : error
+      ? "No disponible"
+      : "Sin lectura";
+  const requiereManual = !error && estado?.requiereValidacionManual;
   return (
     <section
       className={estilos.lectura}
@@ -30,16 +50,38 @@ function LecturaCarril({ sentido }: { sentido: SentidoCarril }) {
         <h3>Sin captura</h3>
         <p>La captura de imágenes aún no está disponible.</p>
       </div>
-      <div className={estilos.datosLectura}>
+      <div
+        className={estilos.datosLectura}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <div>
           <span>Placa</span>
-          <strong>Sin lectura</strong>
+          <strong className={lectura ? estilos.placaLeida : undefined}>
+            {lectura?.placa || sinLectura}
+          </strong>
         </div>
         <div>
           <span>Confianza</span>
-          <strong>Sin lectura</strong>
+          <strong
+            className={requiereManual ? estilos.confianzaManual : undefined}
+          >
+            {lectura
+              ? new Intl.NumberFormat("es-CO", {
+                  style: "percent",
+                  maximumFractionDigits: 2,
+                }).format(lectura.confianza)
+              : sinLectura}
+          </strong>
         </div>
       </div>
+      {requiereManual && (
+        <div className={estilos.avisoManual} role="status">
+          <InsigniaEstado estado="lecturaManual" />
+          <p>La lectura requiere validación del operador antes de continuar.</p>
+        </div>
+      )}
       <footer className={estilos.pieLectura}>
         <p>La próxima captura se destinará a una {operacion}.</p>
         <button
@@ -62,6 +104,7 @@ function LecturaCarril({ sentido }: { sentido: SentidoCarril }) {
 export default function CarrilPage() {
   const [sentido, setSentido] = useState<SentidoCarril>("ENTRADA");
   const { estado, cargando, error } = useEstadoCarril();
+  const ocupacion = useOcupacionCarril();
   return (
     <div className="pagina">
       <Cabecera
@@ -127,7 +170,12 @@ export default function CarrilPage() {
         <strong>{sentido === "ENTRADA" ? "Entrada" : "Salida"}</strong>
       </p>
       <div className={estilos.distribucion}>
-        <LecturaCarril sentido={sentido} />
+        <LecturaCarril
+          sentido={sentido}
+          estado={estado}
+          cargando={cargando}
+          error={error}
+        />
         <div className={estilos.lateral}>
           <section className={estilos.panel} aria-labelledby="titulo-barrera">
             <header className={estilos.encabezadoPanel}>
@@ -137,10 +185,46 @@ export default function CarrilPage() {
               </div>
               <Icono nombre="carril" size={22} />
             </header>
-            <p className={estilos.sinDatos}>Indicador pendiente</p>
-            <p className={estilos.descripcion}>
-              La visualización de la barrera aún no está disponible.
-            </p>
+            <div
+              className={estilos.estadoBarrera}
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {estado && !error ? (
+                <>
+                  <InsigniaEstado
+                    estado={
+                      estado.barrera.estado === "ABIERTA"
+                        ? "barreraAbierta"
+                        : "barreraCerrada"
+                    }
+                  />
+                  <p
+                    className={`${estilos.valorBarrera} ${estado.barrera.estado === "ABIERTA" ? estilos.abierta : estilos.cerrada}`}
+                  >
+                    {estado.barrera.estado === "ABIERTA"
+                      ? "Abierta"
+                      : "Cerrada"}
+                  </p>
+                  <p className={estilos.motivoBarrera}>
+                    <span>Motivo</span>
+                    {estado.barrera.motivo ?? "Sin motivo informado"}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className={estilos.sinDatos}>
+                    {cargando ? "Consultando barrera…" : "Estado no disponible"}
+                  </p>
+                  <p className={estilos.descripcion}>
+                    {cargando
+                      ? "Esperando el estado actual del carril."
+                      : "No se puede confirmar el estado de la barrera. Reintentando conexión…"}
+                  </p>
+                </>
+              )}
+            </div>
           </section>
           <section className={estilos.panel} aria-labelledby="titulo-cupos">
             <header className={estilos.encabezadoPanel}>
@@ -150,18 +234,43 @@ export default function CarrilPage() {
               </div>
               <Icono nombre="carro" size={22} />
             </header>
-            <dl className={estilos.cupos}>
-              <div>
-                <dt>Carros</dt>
-                <dd>Sin consultar</dd>
-              </div>
-              <div>
-                <dt>Motos</dt>
-                <dd>Sin consultar</dd>
-              </div>
+            <dl className={estilos.cupos} aria-live="polite" aria-atomic="true">
+              {(["CARRO", "MOTO"] as const).map((tipo) => {
+                const cupo = ocupacion.datos?.cupos.find(
+                  (actual) => actual.tipoVehiculo === tipo,
+                );
+                return (
+                  <div key={tipo}>
+                    <dt>{tipo === "CARRO" ? "Carros" : "Motos"}</dt>
+                    <dd>
+                      {cupo ? (
+                        <>
+                          <strong>
+                            {cupo.ocupacion} / {cupo.maximo}
+                          </strong>
+                          {cupo.ocupacion >= cupo.maximo && (
+                            <span className={estilos.lleno}>
+                              <InsigniaEstado estado="lleno" />
+                            </span>
+                          )}
+                        </>
+                      ) : ocupacion.cargando ? (
+                        "Consultando…"
+                      ) : ocupacion.error ? (
+                        "No disponible"
+                      ) : (
+                        "Sin configuración"
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
             <p className={estilos.descripcion}>
-              La ocupación y la capacidad aún no se han consultado.
+              {ocupacion.error ??
+                (ocupacion.cargando
+                  ? "Consultando ocupación y capacidad…"
+                  : "Vehículos presentes / capacidad configurada por tipo.")}
             </p>
           </section>
         </div>
