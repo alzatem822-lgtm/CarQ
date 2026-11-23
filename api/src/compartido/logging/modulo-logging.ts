@@ -13,8 +13,9 @@ import { RUTAS_CENSURADAS, TEXTO_CENSURADO } from './rutas-censuradas';
         formatters: { level: (etiqueta) => ({ level: etiqueta }) },
         serializers: {
           req: (req: { url?: string }) => {
-            const ruta = req.url?.split('?')[0];
-            return ruta === '/cobros/pendientes' ? { ...req, url: ruta } : req;
+            // Los filtros pueden contener placas o credenciales incluso en rutas
+            // inv�lidas. Se conserva la ruta, sin registrar valores de consulta.
+            return { ...req, url: req.url?.split('?')[0], query: undefined };
           },
         },
         redact: { paths: RUTAS_CENSURADAS, censor: TEXTO_CENSURADO },
