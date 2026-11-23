@@ -19,7 +19,9 @@ import { RolesPermitidos } from '../../acceso/adaptadores-entrada/decorador-role
 import { GuardAutenticacionJwt } from '../../acceso/adaptadores-entrada/guard-autenticacion-jwt';
 import { GuardRoles } from '../../acceso/adaptadores-entrada/guard-roles';
 import { Rol } from '../../acceso/dominio/rol';
+import { ConsultarCobros } from '../aplicacion/consultar-cobros';
 import { ConsultarEventos } from '../aplicacion/consultar-eventos';
+import { FiltrosCobrosDto, PaginaCobrosDto } from './consulta-cobros.dto';
 import { FiltrosEventosDto, PaginaEventosDto } from './consulta-eventos.dto';
 
 @Controller('consulta')
@@ -35,6 +37,7 @@ import { FiltrosEventosDto, PaginaEventosDto } from './consulta-eventos.dto';
 export class ConsultaController {
   constructor(
     private readonly eventos: ConsultarEventos,
+    private readonly cobros: ConsultarCobros,
     @Inject('ResolverSedeConsulta')
     private readonly resolverSede: () => Promise<number>,
   ) {}
@@ -50,5 +53,18 @@ export class ConsultaController {
     @Query() filtros: FiltrosEventosDto,
   ): Promise<PaginaEventosDto> {
     return this.eventos.ejecutar(await this.resolverSede(), filtros);
+  }
+
+  @Get('cobros')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    operationId: 'consultarCobros',
+    summary: 'Consultar cobros por sede y día operativo',
+  })
+  @ApiOkResponse({ type: PaginaCobrosDto })
+  async consultarCobros(
+    @Query() filtros: FiltrosCobrosDto,
+  ): Promise<PaginaCobrosDto> {
+    return this.cobros.ejecutar(await this.resolverSede(), filtros);
   }
 }

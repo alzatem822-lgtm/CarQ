@@ -3,8 +3,11 @@ import { DataSource } from 'typeorm';
 import { AccesoModule } from '../acceso/acceso.module';
 import { obtenerIdSedePrincipal } from '../configuracion/infraestructura/sede-principal';
 import { ConsultaController } from './adaptadores-entrada/consulta.controller';
+import { ConsultaCobrosRepository } from './aplicacion/consulta-cobros.repository';
 import { ConsultaEventosRepository } from './aplicacion/consulta-eventos.repository';
+import { ConsultarCobros } from './aplicacion/consultar-cobros';
 import { ConsultarEventos } from './aplicacion/consultar-eventos';
+import { ConsultaCobrosPostgresRepository } from './infraestructura/consulta-cobros-postgres.repository';
 import { ConsultaEventosPostgresRepository } from './infraestructura/consulta-eventos-postgres.repository';
 
 @Module({
@@ -28,6 +31,18 @@ import { ConsultaEventosPostgresRepository } from './infraestructura/consulta-ev
       useFactory: (eventos: ConsultaEventosRepository) =>
         new ConsultarEventos(eventos),
       inject: [ConsultaEventosRepository],
+    },
+    {
+      provide: ConsultaCobrosRepository,
+      useFactory: (origen: DataSource) =>
+        new ConsultaCobrosPostgresRepository(origen),
+      inject: [DataSource],
+    },
+    {
+      provide: ConsultarCobros,
+      useFactory: (cobros: ConsultaCobrosRepository) =>
+        new ConsultarCobros(cobros),
+      inject: [ConsultaCobrosRepository],
     },
   ],
 })
