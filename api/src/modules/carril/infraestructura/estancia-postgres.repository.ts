@@ -20,7 +20,7 @@ const COLUMNAS =
 
 @Injectable()
 export class EstanciaPostgresRepository implements EstanciaRepository {
-  constructor(private readonly origen: DataSource) {}
+  constructor(private readonly origen: Pick<DataSource, 'query'>) {}
 
   async abrir(estancia: Estancia): Promise<Estancia> {
     const [fila]: FilaEstancia[] = await this.origen.query(
