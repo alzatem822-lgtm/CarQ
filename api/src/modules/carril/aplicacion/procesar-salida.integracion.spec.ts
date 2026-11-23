@@ -7,6 +7,10 @@ import {
 import { iniciarRedisPruebas } from '../../../compartido/pruebas/redis-pruebas';
 import { sembrarSedeYCarril } from '../../../compartido/base-datos/seeds/sede-carril.seed';
 import { sembrarTarifasYFranja } from '../../../compartido/base-datos/seeds/tarifas-franja.seed';
+import { sembrarCupos } from '../../../compartido/base-datos/seeds/cupos.seed';
+import { CupoPostgresRepository } from '../../configuracion/infraestructura/cupo-postgres.repository';
+import { EstanciaPostgresRepository } from '../infraestructura/estancia-postgres.repository';
+import { ConsultarOcupacion } from './consultar-ocupacion';
 import { sembrarUmbral } from '../../../compartido/base-datos/seeds/umbral.seed';
 import { RelojSistema } from '../../../compartido/reloj/reloj-sistema';
 import { RelojFijo } from '../../../compartido/reloj/reloj-fijo';
@@ -200,6 +204,65 @@ describe('ProcesarSalida con PostgreSQL y Redis reales (CARQ-151)', () => {
       'Sin ingreso registrado',
     );
   });
+  it('CARQ-152: rechaza una placa sin estancia local aunque tenga un cobro pagado y una estancia en otra sede', async () => {
+    await cobro();
+    await db.query("INSERT INTO sede (nombre) VALUES ('Otra sede')");
+    await db.query(
+      "INSERT INTO carril (sede_id, nombre) VALUES (2, 'Otro carril')",
+    );
+    await db.query(
+      `INSERT INTO estancia (placa, sede_id, carril_id, tipo_vehiculo, ingreso_en)
+      VALUES ('ABC123', 2, 2, 'CARRO', $1)`,
+      [new Date(ahora.getTime() - 60000)],
+    );
+    const anteriores = await db.query('SELECT * FROM estancia ORDER BY id');
+    expect(await salir()).toEqual({
+      resultado: 'RECHAZADO',
+      motivo: 'Sin ingreso registrado',
+    });
+    expect(await db.query('SELECT * FROM estancia ORDER BY id')).toEqual(
+      anteriores,
+    );
+    expect(barrera.abrir).not.toHaveBeenCalled();
+    expect(barrera.denegar).toHaveBeenCalledWith('Sin ingreso registrado');
+    expect(
+      await db.query('SELECT sede_id, placa, resultado, motivo FROM evento'),
+    ).toEqual([
+      {
+        sede_id: 1,
+        placa: 'ABC123',
+        resultado: 'RECHAZADO',
+        motivo: 'Sin ingreso registrado',
+      },
+    ]);
+  });
+
+  it('CARQ-153: reduce solo la ocupación del tipo que sale y conserva las otras estancias', async () => {
+    await sembrarCupos(db);
+    await estancia();
+    await estancia('ABC12D');
+    await cobro();
+    const consultar = new ConsultarOcupacion(
+      new CupoPostgresRepository(db),
+      new EstanciaPostgresRepository(db),
+    );
+    expect(await consultar.ejecutar(1)).toEqual([
+      { tipoVehiculo: 'CARRO', ocupacion: 1, maximo: 3 },
+      { tipoVehiculo: 'MOTO', ocupacion: 1, maximo: 5 },
+    ]);
+    expect((await salir()).resultado).toBe('AUTORIZADO');
+    expect(await consultar.ejecutar(1)).toEqual([
+      { tipoVehiculo: 'CARRO', ocupacion: 0, maximo: 3 },
+      { tipoVehiculo: 'MOTO', ocupacion: 1, maximo: 5 },
+    ]);
+    expect(
+      await db.query('SELECT placa, salida_en FROM estancia ORDER BY placa'),
+    ).toEqual([
+      { placa: 'ABC123', salida_en: ahora },
+      { placa: 'ABC12D', salida_en: null },
+    ]);
+  });
+
   it.each([
     { placa: 'invalida', confianza: 1 },
     { placa: 'ABC123', confianza: 0.79 },
