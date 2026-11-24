@@ -76,7 +76,10 @@ def test_exige_archivo_imagen():
         assert cliente.post("/read", json={"imagen": "foto.png"}).status_code == 422
 
 
-def test_motor_no_disponible_no_se_confunde_con_ausencia_de_placa():
+def test_motor_no_disponible_no_se_confunde_con_ausencia_de_placa(monkeypatch):
+    def fallar():
+        raise RuntimeError("No hay modelos")
+    monkeypatch.setattr("motor_fast_alpr.crear_modelo", fallar)
     with TestClient(crear_app()) as cliente:
         respuesta = cliente.post("/read", files={"imagen": ("foto.png", imagen_prueba())})
     assert respuesta.status_code == 503
@@ -108,12 +111,6 @@ def test_exige_campo_imagen():
     with TestClient(crear_app()) as cliente:
         respuesta = cliente.post("/read", files={"archivo": ("foto.png", imagen_prueba())})
     assert respuesta.status_code == 422
-
-
-def test_motor_pendiente_no_se_reporta_como_ausencia_de_placa():
-    with TestClient(crear_app()) as cliente:
-        respuesta = cliente.post("/read", files={"imagen": ("foto.png", imagen_prueba())})
-    assert respuesta.status_code == 503
 
 
 def test_oculta_detalles_de_fallo_del_motor():

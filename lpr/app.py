@@ -5,7 +5,8 @@ from typing import Annotated
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
 
-from lectura import Lectura, MotorLectura, MotorNoDisponible, MotorPendiente
+from lectura import Lectura, MotorLectura, MotorNoDisponible
+from motor_fast_alpr import MotorFastAlpr
 
 MAXIMO_BYTES = 5 * 1024 * 1024
 MAXIMO_PIXELES = 20_000_000
@@ -31,7 +32,7 @@ def abrir_imagen(datos: bytes) -> Image.Image:
 
 def crear_app(motor: MotorLectura | None = None) -> FastAPI:
     servicio = FastAPI(title="CarQ LPR", version="0.1.0")
-    lector = motor if motor is not None else MotorPendiente()
+    lector = motor if motor is not None else MotorFastAlpr()
 
     @servicio.post(
         "/read",

@@ -15,7 +15,7 @@ class Lectura(BaseModel):
         if self.placa is None and self.confianza != 0:
             raise ValueError("Una lectura sin placa debe tener confianza cero")
         if self.placa is not None and not self.placa.strip():
-            raise ValueError("La placa no puede estar vacía")
+            raise ValueError("La placa no puede estar vacÃ­a")
         return self
 
 
@@ -25,10 +25,3 @@ class MotorNoDisponible(Exception):
 
 class MotorLectura(Protocol):
     def leer(self, imagen: Image.Image) -> Lectura: ...
-
-
-class MotorPendiente:
-    """Hasta integrar CARQ-85, no confundir falta de motor con falta de placa."""
-
-    def leer(self, imagen: Image.Image) -> Lectura:
-        raise MotorNoDisponible
