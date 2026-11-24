@@ -1,0 +1,45 @@
+name: Suite completa
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - package.json
+      - scripts/probar-todo.mjs
+      - web/playwright.navegacion.config.ts
+      - .github/workflows/suite-pruebas.yml
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            web/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: "lpr/requirements*.txt"
+      - run: npm --prefix api ci
+      - run: npm --prefix web ci
+      - run: python -m pip install -r lpr/requirements-dev.txt
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm test
+      - if: failure()
+        run: docker compose --profile pruebas --profile ocr logs db_pruebas redis_pruebas lpr
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: suite-resultados
+          path: web/test-results/
+          retention-days: 7
+      - if: always()
+        run: docker compose --profile pruebas --profile ocr down
