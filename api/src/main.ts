@@ -9,6 +9,7 @@ async function bootstrap() {
   const configuracion = app.get(ConfiguracionSistema);
 
   app.useLogger(app.get(Logger));
+  app.enableShutdownHooks();
   configurarHttp(app, configuracion.obtener('URL_WEB'));
 
   await app.listen(configuracion.obtener('PUERTO'));
