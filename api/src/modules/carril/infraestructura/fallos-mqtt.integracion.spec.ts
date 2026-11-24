@@ -13,9 +13,9 @@ import { ConfiguracionSistema } from '../../../compartido/configuracion/configur
 import { validarEntorno } from '../../../compartido/configuracion/validar-entorno';
 import { CLIENTE_MQTT } from '../../../compartido/mqtt/modulo-mqtt';
 import { iniciarBaseDatosPruebas } from '../../../compartido/pruebas/base-datos-pruebas';
+import { sembrarSedeYCarril } from '../../../compartido/base-datos/seeds/sede-carril.seed';
 import { iniciarRedisPruebas } from '../../../compartido/pruebas/redis-pruebas';
 import { CLIENTE_REDIS } from '../../../compartido/redis/modulo-redis';
-import { EstadoCarrilStore } from '../aplicacion/estado-carril.store';
 import { SensorPresencia } from '../aplicacion/sensor-presencia';
 import { BarreraCarril } from '../aplicacion/barrera-carril';
 import { SensorMqtt } from './sensor-mqtt';
@@ -43,6 +43,7 @@ describe('CARQ-189: API disponible sin broker MQTT', () => {
     const puerto = (reserva.address() as AddressInfo).port;
     await new Promise<void>((resolver) => reserva.close(() => resolver()));
     db = await iniciarBaseDatosPruebas();
+    await sembrarSedeYCarril(db);
     redis = await iniciarRedisPruebas();
     const entorno = validarEntorno({
       ...process.env,
@@ -60,20 +61,6 @@ describe('CARQ-189: API disponible sin broker MQTT', () => {
       .useValue({ obtener: (clave: keyof typeof entorno) => entorno[clave] })
       .overrideProvider(CLIENTE_REDIS)
       .useValue(redis)
-      // En este ticket el arnés conecta los adaptadores reales. El registro
-      // permanente en las fábricas de producción corresponde a CARQ-190.
-      .overrideProvider(SensorPresencia)
-      .useFactory({
-        inject: [CLIENTE_MQTT, EstadoCarrilStore],
-        factory: (mqtt: MqttClient, store: EstadoCarrilStore) =>
-          new SensorMqtt(mqtt, store, 1, 1),
-      })
-      .overrideProvider(BarreraCarril)
-      .useFactory({
-        inject: [CLIENTE_MQTT, EstadoCarrilStore],
-        factory: (mqtt: MqttClient, store: EstadoCarrilStore) =>
-          new BarreraMqtt(mqtt, store, 1, 1),
-      })
       .compile();
     cliente = modulo.get<MqttClient>(CLIENTE_MQTT);
     const falloReal = new Promise<void>((resolver) =>

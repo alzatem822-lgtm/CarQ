@@ -4,6 +4,11 @@ import { ConfirmarLecturaManual } from './aplicacion/confirmar-lectura-manual';
 import { LectorManual } from '../vehiculos/infraestructura/lector-manual';
 import type { Redis } from 'ioredis';
 import { CLIENTE_REDIS } from '../../compartido/redis/modulo-redis';
+import type { MqttClient } from 'mqtt';
+import { CLIENTE_MQTT } from '../../compartido/mqtt/modulo-mqtt';
+import { ErrorDominio } from '../../compartido/errores/error-dominio';
+import { SensorMqtt } from './infraestructura/sensor-mqtt';
+import { BarreraMqtt } from './infraestructura/barrera-mqtt';
 import { PaseVigenteRepository } from '../cobros/aplicacion/pase-vigente.repository';
 import { PaseVigenteRedisRepository } from '../cobros/infraestructura/pase-vigente-redis.repository';
 import { ProcesarSalida } from './aplicacion/procesar-salida';
@@ -40,6 +45,8 @@ import { EventoRepository } from './aplicacion/evento.repository';
 import { EstadoCarrilEnMemoriaStore } from './infraestructura/estado-carril-en-memoria.store';
 import { EstanciaPostgresRepository } from './infraestructura/estancia-postgres.repository';
 import { EventoPostgresRepository } from './infraestructura/evento-postgres.repository';
+
+type ResolverCarril = () => Promise<{ sedeId: number; carrilId: number }>;
 
 @Module({
   imports: [ConfiguracionModule, AccesoModule, VehiculosModule],
@@ -149,15 +156,61 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
     },
     {
       provide: SensorPresencia,
-      useFactory: (config: ConfiguracionSistema, estado: EstadoCarrilStore) =>
-        crearSensorPresencia(config.obtener('FUENTE_SENSOR'), estado),
-      inject: [ConfiguracionSistema, EstadoCarrilStore],
+      useFactory: async (
+        config: ConfiguracionSistema,
+        estado: EstadoCarrilStore,
+        cliente: MqttClient | null,
+        resolver: ResolverCarril,
+      ) => {
+        const tipo = config.obtener('FUENTE_SENSOR');
+        if (tipo !== 'mqtt') return crearSensorPresencia(tipo, estado);
+        if (!cliente)
+          throw new ErrorDominio(
+            'SENSOR_NO_DISPONIBLE',
+            'No se configuró el cliente MQTT del sensor',
+          );
+        const { sedeId, carrilId } = await resolver();
+        return crearSensorPresencia(
+          tipo,
+          estado,
+          () => new SensorMqtt(cliente, estado, sedeId, carrilId),
+        );
+      },
+      inject: [
+        ConfiguracionSistema,
+        EstadoCarrilStore,
+        CLIENTE_MQTT,
+        'ResolverCarrilIngreso',
+      ],
     },
     {
       provide: BarreraCarril,
-      useFactory: (config: ConfiguracionSistema, estado: EstadoCarrilStore) =>
-        crearBarreraCarril(config.obtener('CONTROLADOR_BARRERA'), estado),
-      inject: [ConfiguracionSistema, EstadoCarrilStore],
+      useFactory: async (
+        config: ConfiguracionSistema,
+        estado: EstadoCarrilStore,
+        cliente: MqttClient | null,
+        resolver: ResolverCarril,
+      ) => {
+        const tipo = config.obtener('CONTROLADOR_BARRERA');
+        if (tipo !== 'mqtt') return crearBarreraCarril(tipo, estado);
+        if (!cliente)
+          throw new ErrorDominio(
+            'BARRERA_NO_DISPONIBLE',
+            'No se configuró el cliente MQTT de la barrera',
+          );
+        const { sedeId, carrilId } = await resolver();
+        return crearBarreraCarril(
+          tipo,
+          estado,
+          () => new BarreraMqtt(cliente, estado, sedeId, carrilId),
+        );
+      },
+      inject: [
+        ConfiguracionSistema,
+        EstadoCarrilStore,
+        CLIENTE_MQTT,
+        'ResolverCarrilIngreso',
+      ],
     },
     {
       provide: 'ResolverSedeCarril',
