@@ -1,0 +1,8 @@
+*
+!requirements.txt
+!app.py
+!lectura.py
+!confianza.py
+!motor_fast_alpr.py
+!precargar_modelos.py
+!verificar_sin_red.py
