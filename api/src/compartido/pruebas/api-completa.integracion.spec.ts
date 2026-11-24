@@ -547,6 +547,43 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     }
   });
 
+  it.each([
+    { metodo: 'get', ruta: '/cobros/pendientes?placa=ABC123' },
+    {
+      metodo: 'post',
+      ruta: '/pagos/efectivo',
+      cuerpo: { cobroId: 1, referencia: 'carq-216-pago-no-autorizado' },
+    },
+    {
+      metodo: 'post',
+      ruta: '/carril/ingreso',
+      cuerpo: { placa: 'ABC123', confianza: 0.95 },
+    },
+    {
+      metodo: 'post',
+      ruta: '/carril/salida',
+      cuerpo: { placa: 'ABC123', confianza: 0.95 },
+    },
+    {
+      metodo: 'post',
+      ruta: '/carril/lectura-manual',
+      cuerpo: { placa: 'ABC123', sentido: 'ENTRADA' },
+    },
+  ] as const)(
+    'rechaza administrador en $metodo $ruta (CARQ-216)',
+    async (operacion) => {
+      const { metodo, ruta } = operacion;
+      const solicitud = request(servidor())[metodo](ruta).set(admin());
+      if ('cuerpo' in operacion) solicitud.send(operacion.cuerpo);
+
+      const respuesta = await solicitud.expect(403);
+      expect(respuesta.body).toEqual({
+        codigo: 'FORBIDDEN',
+        motivo: expect.any(String),
+      });
+    },
+  );
+
   it('mantiene un solo pago y una sola transición al repetir la referencia (CARQ-213)', async () => {
     const [{ id: cobroId, version: versionInicial }] = await db!.query<
       { id: number; version: string }[]
