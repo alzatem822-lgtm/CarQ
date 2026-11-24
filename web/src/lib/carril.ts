@@ -46,6 +46,18 @@ export function consultarEstadoCarril(
   return peticion("/carril/estado", { signal, cache: "no-store" });
 }
 
+export function confirmarLecturaManualCarril(
+  sentido: "ENTRADA" | "SALIDA",
+  placa: string,
+  signal: AbortSignal,
+): Promise<NonNullable<EstadoCarril["ultimoResultado"]>> {
+  return peticion("/carril/lectura-manual", {
+    method: "POST",
+    body: JSON.stringify({ sentido, placa }),
+    signal,
+  });
+}
+
 /** Envía la imagen sin fijar Content-Type: el navegador agrega el boundary. */
 export function procesarImagenCarril(
   sentido: "ENTRADA" | "SALIDA",

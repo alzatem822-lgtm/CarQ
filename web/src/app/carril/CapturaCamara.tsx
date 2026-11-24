@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Alerta } from "@/componentes/interfaz/Alerta";
 import { procesarImagenCarril } from "@/lib/carril";
 import { mensajeDeErrorApi } from "@/lib/mensaje-error-api";
+import type { ControlOperacionCarril } from "@/lib/usar-operacion-carril";
 import estilos from "./Carril.module.css";
 
 function detener(stream: MediaStream | null) {
@@ -14,9 +15,11 @@ function detener(stream: MediaStream | null) {
 export function CapturaCamara({
   sentido,
   vehiculoPresente,
+  operacion: controlOperacion,
 }: {
   sentido: "ENTRADA" | "SALIDA";
   vehiculoPresente: boolean | null;
+  operacion: ControlOperacionCarril;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -38,6 +41,8 @@ export function CapturaCamara({
   // Un sondeo fallido (null) no equivale a que el vehículo abandonó el carril.
   const comprobarCapturaAutomatica = useEffectEvent(() => {
     if (vehiculoPresente === false) presenciaAtendida.current = false;
+    if (controlOperacion.origen === "manual" && vehiculoPresente === true)
+      presenciaAtendida.current = true;
     if (
       automatica &&
       vehiculoPresente === true &&
@@ -52,7 +57,14 @@ export function CapturaCamara({
 
   useEffect(() => {
     comprobarCapturaAutomatica();
-  }, [vehiculoPresente, automatica, fase, listo, enviando]);
+  }, [
+    vehiculoPresente,
+    automatica,
+    fase,
+    listo,
+    enviando,
+    controlOperacion.origen,
+  ]);
 
   useEffect(
     () => () => {
@@ -133,6 +145,7 @@ export function CapturaCamara({
     if (ocupado.current) return;
     if (!imagenSeleccionada && (!visor || !listo || !stream.current?.active))
       return;
+    if (!controlOperacion.iniciar("captura")) return;
     ocupado.current = true;
     // También cubre los envíos manuales para no duplicarlos automáticamente.
     if (vehiculoPresente === true) presenciaAtendida.current = true;
@@ -187,6 +200,7 @@ export function CapturaCamara({
           ),
         );
     } finally {
+      controlOperacion.finalizar();
       ocupado.current = false;
       solicitud.current = null;
       if (!control.signal.aborted) setEnviando(false);
@@ -239,7 +253,9 @@ export function CapturaCamara({
         <button
           type="button"
           className="boton-primario"
-          disabled={fase !== "activa" || !listo || enviando}
+          disabled={
+            fase !== "activa" || !listo || controlOperacion.origen !== null
+          }
           onClick={() => void capturar()}
         >
           {enviando ? "Procesando captura…" : `Capturar ${operacion}`}
@@ -275,7 +291,7 @@ export function CapturaCamara({
           type="file"
           accept="image/jpeg,image/png,image/webp"
           aria-describedby="ayuda-imagen"
-          disabled={enviando}
+          disabled={controlOperacion.origen !== null}
           onChange={(evento) => {
             const seleccionado = evento.target.files?.[0] ?? null;
             setArchivo(null);
@@ -283,13 +299,18 @@ export function CapturaCamara({
             setResultado(null);
             if (!seleccionado) return;
             if (
-              !["image/jpeg", "image/png", "image/webp"].includes(seleccionado.type)
+              !["image/jpeg", "image/png", "image/webp"].includes(
+                seleccionado.type,
+              )
             ) {
               setError("Selecciona una imagen JPEG, PNG o WebP.");
               evento.target.value = "";
               return;
             }
-            if (seleccionado.size === 0 || seleccionado.size > 5 * 1024 * 1024) {
+            if (
+              seleccionado.size === 0 ||
+              seleccionado.size > 5 * 1024 * 1024
+            ) {
               setError("La imagen debe contener datos y no superar 5 MiB.");
               evento.target.value = "";
               return;
@@ -300,7 +321,7 @@ export function CapturaCamara({
         <button
           type="button"
           className="boton-secundario"
-          disabled={!archivo || enviando}
+          disabled={!archivo || controlOperacion.origen !== null}
           onClick={() => archivo && void capturar(archivo)}
         >
           {enviando ? "Procesando imagen…" : `Enviar imagen para ${operacion}`}
