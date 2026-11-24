@@ -1,0 +1,39 @@
+name: Adaptadores MQTT reales
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "api/**"
+      - "mosquitto/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/adaptadores-mqtt.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "api/**"
+      - "mosquitto/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/adaptadores-mqtt.yml"
+
+jobs:
+  mqtt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: cp .env.example .env
+      - run: npm --prefix api ci
+      - run: docker compose --env-file .env.example --profile pruebas up -d --wait --wait-timeout 60 db_pruebas redis_pruebas mqtt_pruebas
+      - run: npm --prefix api run test:mqtt
+      - if: failure()
+        run: docker compose --profile pruebas logs db_pruebas redis_pruebas mqtt_pruebas
+      - if: always()
+        run: docker compose --profile pruebas stop db_pruebas redis_pruebas mqtt_pruebas
