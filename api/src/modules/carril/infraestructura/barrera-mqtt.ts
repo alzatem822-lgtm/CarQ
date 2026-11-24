@@ -14,6 +14,7 @@ import { construirTopicosCarril } from '../../../compartido/mqtt/topicos-carril'
 import { BarreraCarril } from '../aplicacion/barrera-carril';
 import { EstadoCarrilStore } from '../aplicacion/estado-carril.store';
 import type { EstadoCarril } from '../dominio/estado-carril';
+import { actualizarEstadoMqtt } from './actualizar-estado-mqtt';
 
 const TIEMPO_PUBLICACION_MS = 5000;
 
@@ -109,13 +110,12 @@ export class BarreraMqtt
   private actualizarBarrera(
     cambio: Partial<EstadoCarril['barrera']>,
   ): Promise<void> {
-    const operacion = this.pendienteEstado.then(async () => {
-      const estado = await this.estadoCarril.obtener();
-      await this.estadoCarril.guardar({
+    const operacion = this.pendienteEstado.then(() =>
+      actualizarEstadoMqtt(this.estadoCarril, (estado) => ({
         ...estado,
         barrera: { ...estado.barrera, ...cambio },
-      });
-    });
+      })),
+    );
     this.pendienteEstado = operacion.catch(() => undefined);
     return operacion;
   }

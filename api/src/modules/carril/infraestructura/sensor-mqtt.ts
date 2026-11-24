@@ -8,6 +8,7 @@ import { contratoPresenciaMqtt } from '../../../compartido/mqtt/mensajes-mqtt';
 import { construirTopicosCarril } from '../../../compartido/mqtt/topicos-carril';
 import { EstadoCarrilStore } from '../aplicacion/estado-carril.store';
 import { SensorPresencia } from '../aplicacion/sensor-presencia';
+import { actualizarEstadoMqtt } from './actualizar-estado-mqtt';
 
 /** Recibe presencia física sin registrar ingresos ni ordenar la barrera. */
 export class SensorMqtt
@@ -44,13 +45,15 @@ export class SensorMqtt
   }
 
   notificarPresencia(presente: boolean): Promise<void> {
-    const operacion = this.pendiente.then(async () => {
-      const estado = await this.estadoCarril.obtener();
-      await this.estadoCarril.guardar({
-        ...estado,
-        vehiculoPresente: presente,
-      });
-    });
+    const operacion = this.pendiente.then(() =>
+      actualizarEstadoMqtt(this.estadoCarril, (estado) => {
+        if (estado.vehiculoPresente === presente) return;
+        return {
+          ...estado,
+          vehiculoPresente: presente,
+        };
+      }),
+    );
     this.pendiente = operacion.catch(() => undefined);
     return operacion;
   }
