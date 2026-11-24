@@ -51,14 +51,21 @@ export function ListadoConsulta<T extends { id: number }, E extends string>({
 
   useEffect(() => {
     const control = new AbortController();
-    const signal = AbortSignal.any([control.signal, AbortSignal.timeout(20000)]);
+    const signal = AbortSignal.any([
+      control.signal,
+      AbortSignal.timeout(20000),
+    ]);
     consultar(solicitud.filtros, solicitud.pagina, signal).then(
       (datos) => {
-        if (!control.signal.aborted) setRespuesta({ solicitud, estado: "lista", datos });
+        if (!control.signal.aborted)
+          setRespuesta({ solicitud, estado: "lista", datos });
       },
       (error: unknown) => {
         if (control.signal.aborted) return;
-        const mensaje = mensajeDeErrorApi(error, "No pudimos cargar los registros. Intenta de nuevo.");
+        const mensaje = mensajeDeErrorApi(
+          error,
+          "No pudimos cargar los registros. Intenta de nuevo.",
+        );
         setRespuesta({ solicitud, estado: "error", mensaje });
       },
     );
@@ -77,7 +84,11 @@ export function ListadoConsulta<T extends { id: number }, E extends string>({
         aplicar={(filtros) => setSolicitud({ filtros, pagina: 1 })}
       />
       <div aria-busy={!actual}>
-        {!actual && <p className={estilos.estado} role="status">Cargando registros…</p>}
+        {!actual && (
+          <p className={estilos.estado} role="status">
+            Cargando registros…
+          </p>
+        )}
         {actual?.estado === "error" && (
           <div className={estilos.error}>
             <Alerta tono="peligro">{actual.mensaje}</Alerta>
@@ -92,7 +103,12 @@ export function ListadoConsulta<T extends { id: number }, E extends string>({
         )}
         {actual?.estado === "lista" && (
           <>
-            <div className={estilos.tabla} tabIndex={0} role="region" aria-label={`Tabla de ${titulo.toLowerCase()}`}>
+            <div
+              className={estilos.tabla}
+              tabIndex={0}
+              role="region"
+              aria-label={`Tabla de ${titulo.toLowerCase()}`}
+            >
               <Tabla
                 columnas={columnas}
                 filas={actual.datos.elementos}
@@ -100,7 +116,10 @@ export function ListadoConsulta<T extends { id: number }, E extends string>({
                 mensajeVacio="No hay registros para los filtros aplicados."
               />
             </div>
-            <nav className={estilos.paginacion} aria-label="Paginación de resultados">
+            <nav
+              className={estilos.paginacion}
+              aria-label="Paginación de resultados"
+            >
               <button
                 type="button"
                 className="boton-secundario"

@@ -1,4 +1,5 @@
 import { peticion } from "./cliente-http";
+import type { CobroCaja } from "./caja";
 import type { ValoresFiltros } from "./filtros-consulta";
 
 export interface PaginaConsulta<T> {
@@ -6,7 +7,8 @@ export interface PaginaConsulta<T> {
   readonly haySiguiente: boolean;
 }
 
-export type ResultadoEvento = "AUTORIZADO" | "RECHAZADO" | "REQUIERE_LECTURA_MANUAL";
+export type ResultadoEvento =
+  "AUTORIZADO" | "RECHAZADO" | "REQUIERE_LECTURA_MANUAL";
 
 export interface EventoConsulta {
   readonly id: number;
@@ -33,12 +35,32 @@ export async function consultarEventos(
 ): Promise<PaginaConsulta<EventoConsulta>> {
   const parametros = new URLSearchParams({ pagina: String(pagina) });
   if (filtros.placa) parametros.set("placa", filtros.placa);
-  if (filtros.desde) parametros.set("desde", new Date(inicioDia(filtros.desde)).toISOString());
+  if (filtros.desde)
+    parametros.set("desde", new Date(inicioDia(filtros.desde)).toISOString());
   if (filtros.hasta) {
     const hastaExclusivo = inicioDia(filtros.hasta) + DURACION_DIA_MS;
     parametros.set("hasta", new Date(hastaExclusivo).toISOString());
   }
   if (filtros.estado) parametros.set("resultado", filtros.estado);
 
-  return peticion<PaginaConsulta<EventoConsulta>>(`/consulta/eventos?${parametros}`, { signal });
+  return peticion<PaginaConsulta<EventoConsulta>>(
+    `/consulta/eventos?${parametros}`,
+    { signal },
+  );
+}
+
+export async function consultarCobros(
+  filtros: ValoresFiltros<CobroCaja["estado"]>,
+  pagina: number,
+  signal: AbortSignal,
+): Promise<PaginaConsulta<CobroCaja>> {
+  const parametros = new URLSearchParams({ pagina: String(pagina) });
+  if (filtros.placa) parametros.set("placa", filtros.placa);
+  if (filtros.desde) parametros.set("desde", filtros.desde);
+  if (filtros.hasta) parametros.set("hasta", filtros.hasta);
+  if (filtros.estado) parametros.set("estado", filtros.estado);
+
+  return peticion<PaginaConsulta<CobroCaja>>(`/consulta/cobros?${parametros}`, {
+    signal,
+  });
 }

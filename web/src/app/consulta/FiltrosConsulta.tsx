@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { Alerta } from "@/componentes/interfaz/Alerta";
 import { CampoFormulario } from "@/componentes/interfaz/CampoFormulario";
 import {
@@ -21,6 +21,7 @@ export function FiltrosConsulta<T extends string>({
 }: Props<T>) {
   const [valores, setValores] = useState<ValoresFiltros<T>>(FILTROS_VACIOS);
   const [error, setError] = useState("");
+  const idEstado = useId();
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -40,7 +41,11 @@ export function FiltrosConsulta<T extends string>({
   }
 
   return (
-    <form className={estilos.formulario} aria-label="Filtros de consulta" onSubmit={enviar}>
+    <form
+      className={estilos.formulario}
+      aria-label="Filtros de consulta"
+      onSubmit={enviar}
+    >
       {opciones.indicacionFechas && (
         <p className={estilos.indicacion}>{opciones.indicacionFechas}</p>
       )}
@@ -64,7 +69,9 @@ export function FiltrosConsulta<T extends string>({
           type="date"
           max="9998-12-31"
           value={valores.desde}
-          onChange={(evento) => setValores({ ...valores, desde: evento.target.value })}
+          onChange={(evento) =>
+            setValores({ ...valores, desde: evento.target.value })
+          }
         />
         <CampoFormulario
           etiqueta="Hasta"
@@ -72,29 +79,40 @@ export function FiltrosConsulta<T extends string>({
           type="date"
           max="9998-12-31"
           value={valores.hasta}
-          onChange={(evento) => setValores({ ...valores, hasta: evento.target.value })}
+          onChange={(evento) =>
+            setValores({ ...valores, hasta: evento.target.value })
+          }
         />
-        <label className={estilos.estado}>
-          {opciones.etiqueta}
+        <div className={estilos.estado}>
+          <label htmlFor={idEstado}>{opciones.etiqueta}</label>
           <select
+            id={idEstado}
             name="estado"
             value={valores.estado}
             onChange={(evento) => {
-              const elegido = opciones.estados.find(({ valor }) => valor === evento.target.value);
+              const elegido = opciones.estados.find(
+                ({ valor }) => valor === evento.target.value,
+              );
               setValores({ ...valores, estado: elegido?.valor ?? "" });
             }}
           >
             <option value="">Todos</option>
             {opciones.estados.map(({ valor, texto }) => (
-              <option key={valor} value={valor}>{texto}</option>
+              <option key={valor} value={valor}>
+                {texto}
+              </option>
             ))}
           </select>
-        </label>
+        </div>
       </div>
       {error && <Alerta tono="peligro">{error}</Alerta>}
       <div className={estilos.acciones}>
-        <button type="submit" className="boton-primario">Aplicar filtros</button>
-        <button type="button" className="boton-secundario" onClick={limpiar}>Limpiar</button>
+        <button type="submit" className="boton-primario">
+          Aplicar filtros
+        </button>
+        <button type="button" className="boton-secundario" onClick={limpiar}>
+          Limpiar
+        </button>
       </div>
     </form>
   );

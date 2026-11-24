@@ -20,7 +20,10 @@ const opciones: OpcionesFiltros<ResultadoEvento> = {
   estados: [
     { valor: "AUTORIZADO", texto: resultados.AUTORIZADO },
     { valor: "RECHAZADO", texto: resultados.RECHAZADO },
-    { valor: "REQUIERE_LECTURA_MANUAL", texto: resultados.REQUIERE_LECTURA_MANUAL },
+    {
+      valor: "REQUIERE_LECTURA_MANUAL",
+      texto: resultados.REQUIERE_LECTURA_MANUAL,
+    },
   ],
 };
 
@@ -35,15 +38,29 @@ const origen = { SIMULADO: "Simulado", MANUAL: "Manual", OCR: "OCR" };
 const columnas: Columna<EventoConsulta>[] = [
   {
     encabezado: "Fecha",
-    celda: (evento) => <time dateTime={evento.ocurridoEn}>{fecha.format(new Date(evento.ocurridoEn))}</time>,
+    celda: (evento) => (
+      <time dateTime={evento.ocurridoEn}>
+        {fecha.format(new Date(evento.ocurridoEn))}
+      </time>
+    ),
   },
   { encabezado: "Placa", celda: (evento) => evento.placa ?? "Sin placa" },
-  { encabezado: "Tipo", celda: (evento) => evento.sentido === "ENTRADA" ? "Entrada" : "Salida" },
+  {
+    encabezado: "Tipo",
+    celda: (evento) => (evento.sentido === "ENTRADA" ? "Entrada" : "Salida"),
+  },
   { encabezado: "Origen", celda: (evento) => origen[evento.origen] },
   { encabezado: "Resultado", celda: (evento) => resultados[evento.resultado] },
   { encabezado: "Motivo", celda: (evento) => evento.motivo },
 ];
 
 export function EventosConsulta() {
-  return <ListadoConsulta titulo="Eventos" opciones={opciones} columnas={columnas} consultar={consultarEventos} />;
+  return (
+    <ListadoConsulta
+      titulo="Eventos"
+      opciones={opciones}
+      columnas={columnas}
+      consultar={consultarEventos}
+    />
+  );
 }
