@@ -1,7 +1,13 @@
+import {
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import type { MqttClient } from 'mqtt';
 import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 import {
   contratoComandoBarreraMqtt,
+  contratoEstadoBarreraMqtt,
   type MensajeComandoBarreraMqtt,
 } from '../../../compartido/mqtt/mensajes-mqtt';
 import { construirTopicosCarril } from '../../../compartido/mqtt/topicos-carril';
@@ -19,9 +25,16 @@ function noDisponible(): ErrorDominio {
 }
 
 /** Publica órdenes; el movimiento físico lo confirma el firmware por su tópico. */
-export class BarreraMqtt extends BarreraCarril {
+export class BarreraMqtt
+  extends BarreraCarril
+  implements OnModuleInit, OnModuleDestroy
+{
+  private readonly logger = new Logger(BarreraMqtt.name);
   private readonly topico: string;
+  private readonly topicoEstado: string;
+  private activo = false;
   private pendiente: Promise<void> = Promise.resolve();
+  private pendienteEstado: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly cliente: MqttClient,
@@ -30,7 +43,26 @@ export class BarreraMqtt extends BarreraCarril {
     carrilId: number,
   ) {
     super();
-    this.topico = construirTopicosCarril(sedeId, carrilId).comandoBarrera;
+    const topicos = construirTopicosCarril(sedeId, carrilId);
+    this.topico = topicos.comandoBarrera;
+    this.topicoEstado = topicos.estadoBarrera;
+  }
+
+  onModuleInit(): void {
+    if (this.activo) return;
+    this.activo = true;
+    this.cliente.on('message', this.recibirEstado);
+    this.cliente.subscribe(
+      this.topicoEstado,
+      { qos: 0 },
+      (error, concedidos) => {
+        if (
+          this.activo &&
+          (error || concedidos?.some((concedido) => concedido.qos === 128))
+        )
+          this.logger.warn('No se pudo suscribir el estado de barrera MQTT');
+      },
+    );
   }
 
   abrir(motivo: string): Promise<void> {
@@ -48,6 +80,7 @@ export class BarreraMqtt extends BarreraCarril {
 
   async consultarEstado(): Promise<EstadoCarril['barrera']> {
     await this.pendiente;
+    await this.pendienteEstado;
     return { ...(await this.estadoCarril.obtener()).barrera };
   }
 
@@ -66,14 +99,50 @@ export class BarreraMqtt extends BarreraCarril {
       // Una orden pendiente de otra conexión no se reproduce tras reconectar.
       if (this.cliente.stream !== conexion) throw noDisponible();
       await this.publicar(contratoComandoBarreraMqtt.codificar({ comando }));
-      const estado = await this.estadoCarril.obtener();
-      await this.estadoCarril.guardar({
-        ...estado,
-        barrera: { ...estado.barrera, motivo },
-      });
+      await this.actualizarBarrera({ motivo });
     });
     this.pendiente = operacion.catch(() => undefined);
     return operacion;
+  }
+
+  /** Serializa cambios físicos y de motivo sin esperar publicaciones pendientes. */
+  private actualizarBarrera(
+    cambio: Partial<EstadoCarril['barrera']>,
+  ): Promise<void> {
+    const operacion = this.pendienteEstado.then(async () => {
+      const estado = await this.estadoCarril.obtener();
+      await this.estadoCarril.guardar({
+        ...estado,
+        barrera: { ...estado.barrera, ...cambio },
+      });
+    });
+    this.pendienteEstado = operacion.catch(() => undefined);
+    return operacion;
+  }
+
+  private readonly recibirEstado = (topico: string, payload: Buffer): void => {
+    if (!this.activo || topico !== this.topicoEstado) return;
+    let estado: EstadoCarril['barrera']['estado'];
+    try {
+      const mensaje = contratoEstadoBarreraMqtt.decodificar(payload);
+      estado = mensaje.estado === 'abierta' ? 'ABIERTA' : 'CERRADA';
+    } catch {
+      this.logger.warn('Mensaje de estado de barrera MQTT inválido descartado');
+      return;
+    }
+    void this.actualizarBarrera({ estado }).catch(() => {
+      this.logger.error('No se pudo actualizar el estado físico de la barrera');
+    });
+  };
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.activo) {
+      this.activo = false;
+      this.cliente.removeListener('message', this.recibirEstado);
+      this.cliente.unsubscribe(this.topicoEstado, () => undefined);
+    }
+    await this.pendiente;
+    await this.pendienteEstado;
   }
 
   private publicar(payload: string): Promise<void> {
