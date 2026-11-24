@@ -192,6 +192,72 @@ describe('Ingreso HTTP con transacciones PostgreSQL reales', () => {
       expect(barrera.abrir).not.toHaveBeenCalled();
     },
   );
+  it.each(['ABC123', 'XYZ987'])(
+    'CARQ-209: lectura bajo el umbral y confirmación manual de %s por HTTP',
+    async (placaConfirmada) => {
+      await ingresar('ABC123', 0.79).expect(200, {
+        resultado: 'REQUIERE_LECTURA_MANUAL',
+        motivo: 'Se requiere validación manual',
+      });
+      expect(await contar()).toEqual({ cobros: 0, estancias: 0, eventos: 1 });
+      expect(barrera.abrir).not.toHaveBeenCalled();
+      expect(barrera.denegar).toHaveBeenCalledWith(
+        'Se requiere validación manual',
+      );
+      expect(await app.get(EstadoCarrilStore).obtener()).toMatchObject({
+        requiereValidacionManual: true,
+        ultimaLectura: { placa: 'ABC123', confianza: 0.79, origen: 'SIMULADO' },
+        barrera: { estado: 'CERRADA' },
+      });
+
+      await request(app.getHttpServer())
+        .post('/carril/lectura-manual')
+        .auth(token(), { type: 'bearer' })
+        .send({ sentido: 'ENTRADA', placa: placaConfirmada })
+        .expect(200, { resultado: 'AUTORIZADO', motivo: 'Ingreso autorizado' });
+
+      expect(await contar()).toEqual({ cobros: 1, estancias: 1, eventos: 2 });
+      const eventos = await db.query(
+        'SELECT placa, sentido, resultado, origen, lectura_manual, operador, confianza::float8 AS confianza FROM evento ORDER BY id',
+      );
+      expect(eventos).toEqual([
+        expect.objectContaining({
+          placa: 'ABC123',
+          sentido: 'ENTRADA',
+          resultado: 'REQUIERE_LECTURA_MANUAL',
+          origen: 'SIMULADO',
+          lectura_manual: false,
+          confianza: 0.79,
+        }),
+        {
+          placa: placaConfirmada,
+          sentido: 'ENTRADA',
+          resultado: 'AUTORIZADO',
+          origen: 'MANUAL',
+          lectura_manual: true,
+          operador: 'operador',
+          confianza: 1,
+        },
+      ]);
+      expect(
+        await db.query('SELECT placa FROM estancia WHERE salida_en IS NULL'),
+      ).toEqual([{ placa: placaConfirmada }]);
+      expect(await db.query('SELECT placa, estado FROM cobro')).toEqual([
+        { placa: placaConfirmada, estado: 'PENDIENTE' },
+      ]);
+      expect(await app.get(EstadoCarrilStore).obtener()).toMatchObject({
+        requiereValidacionManual: false,
+        ultimaLectura: {
+          placa: placaConfirmada,
+          confianza: 1,
+          origen: 'MANUAL',
+        },
+        ultimoResultado: { resultado: 'AUTORIZADO' },
+      });
+      expect(barrera.abrir).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('registra LLENO sin estancia ni cobro y sin apertura', async () => {
     await db.query("UPDATE cupo SET maximo = 0 WHERE tipo = 'CARRO'");
     await ingresar().expect(200, { resultado: 'RECHAZADO', motivo: 'LLENO' });
