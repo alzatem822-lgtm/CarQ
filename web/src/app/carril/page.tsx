@@ -45,7 +45,12 @@ function LecturaCarril({
         </div>
         <span className={estilos.destino}>Captura de {operacion}</span>
       </header>
-      <CapturaCamara sentido={sentido} />
+      <CapturaCamara
+        sentido={sentido}
+        vehiculoPresente={
+          error || cargando ? null : (estado?.vehiculoPresente ?? null)
+        }
+      />
       <div
         className={estilos.datosLectura}
         role="status"
