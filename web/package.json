@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "node --test",
     "test:e2e": "playwright test",
+    "test:e2e:administracion": "playwright test --config=playwright.administracion.config.ts",
     "test:e2e:operador": "playwright test --config=playwright.operador.config.ts"
   },
   "dependencies": {
