@@ -18,6 +18,7 @@ const config: Config = {
     '/node_modules/',
     '\\.integracion\\.spec\\.ts$',
     '\\.lpr\\.spec\\.ts$',
+    '\\.mqtt\\.spec\\.ts$',
   ],
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',

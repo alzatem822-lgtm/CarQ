@@ -64,6 +64,7 @@ Para usar el OCR real, configura `LECTOR_PLACAS=http` en `.env`, inicia el servi
 | `URL_BASE_DATOS_MIGRACIONES` | Conexión para migraciones lanzadas desde el host, `localhost:5432/carq`. El arranque dentro de Compose usa `URL_BASE_DATOS`. |
 | `URL_BASE_DATOS_PRUEBAS`     | PostgreSQL de pruebas en `localhost:5433/carq_pruebas`.                                                                      |
 | `URL_REDIS_PRUEBAS`          | Redis de pruebas en `redis://localhost:6380`.                                                                                |
+| `URL_MQTT_PRUEBAS`           | Broker Mosquitto aislado para las pruebas de integración, `mqtt://127.0.0.1:1884`.                                           |
 
 ## Pruebas
 
@@ -82,9 +83,9 @@ Ejecuta la suite desde la raíz.
 npm test
 ```
 
-El comando levanta PostgreSQL y Redis de pruebas y el servicio OCR. Ejecuta unitarias de API, frontend y LPR, integración con servicios reales y los grupos de navegador de navegación, operador, Administración y Consulta. Devuelve un código distinto de cero si falla una etapa.
+El comando levanta PostgreSQL, Redis y Mosquitto de pruebas y el servicio OCR. Ejecuta unitarias de API, frontend y LPR, integración con servicios reales y los grupos de navegador de navegación, operador, Administración y Consulta. Devuelve un código distinto de cero si falla una etapa.
 
-Para detener los servicios de pruebas tras una ejecución usa `docker compose stop db_pruebas redis_pruebas lpr`. Si también usas el OCR en el MVP, conserva `lpr` en ejecución.
+Para detener los servicios de pruebas tras una ejecución usa `docker compose stop db_pruebas redis_pruebas mqtt_pruebas lpr`. Si también usas el OCR en el MVP, conserva `lpr` en ejecución.
 
 ## Verificar el arranque
 
