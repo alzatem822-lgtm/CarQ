@@ -79,12 +79,25 @@ services:
     ports:
       - "3000:3000"
 
-  # Servicio de OCR. Solo se levanta con: docker compose --profile ocr up
-  # La carpeta lpr/ se crea en el Sprint 2 (CARQ-84 en adelante).
+  # OCR opcional: docker compose --profile ocr up -d --build lpr
+  # La API lo alcanza mediante URL_LPR=http://lpr:8000.
   lpr:
     profiles: ["ocr"]
     build: ./lpr
     init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json', timeout=3).close()"
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
     ports:
       - "127.0.0.1:8000:8000"
 
