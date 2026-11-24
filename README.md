@@ -85,3 +85,11 @@ npm test
 El comando levanta PostgreSQL y Redis de pruebas y el servicio OCR. Ejecuta unitarias de API, frontend y LPR, integración con servicios reales y los grupos de navegador de navegación, operador, Administración y Consulta. Devuelve un código distinto de cero si falla una etapa.
 
 Para detener los servicios de pruebas tras una ejecución usa `docker compose stop db_pruebas redis_pruebas lpr`. Si también usas el OCR en el MVP, conserva `lpr` en ejecución.
+
+## Verificar el arranque
+
+Después de ejecutar el comando de arranque, comprueba que responden el frontend, Swagger y el inicio de sesión de los dos roles.
+
+```sh
+node scripts/verificar-arranque.mjs
+```
