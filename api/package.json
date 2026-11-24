@@ -17,6 +17,7 @@
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",
     "test:lpr": "node --env-file=../.env --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --testPathIgnorePatterns=/node_modules/ --testRegex=\\.lpr\\.spec\\.ts$",
+    "test:mqtt": "node --env-file=../.env --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --testPathIgnorePatterns=/node_modules/ --testRegex=\\.mqtt\\.spec\\.ts$",
     "test:swagger": "npm test -- --runInBand --runTestsByPath src/compartido/documentacion/swagger.spec.ts",
     "test:api": "npm run test:integracion -- --runTestsByPath src/compartido/pruebas/api-completa.integracion.spec.ts",
     "test:cov": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage",
