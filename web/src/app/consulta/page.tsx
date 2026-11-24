@@ -1,2 +1,49 @@
-import { PantallaPendiente } from '@/componentes/PantallaPendiente';
-export default function ConsultaPage() { return <PantallaPendiente titulo="Consulta de cobros" descripcion="El espacio para encontrar y revisar los registros del parqueadero." icono="consulta" pasos={['Buscar por placa y rango de fechas.', 'Filtrar los registros por estado.', 'Consultar la tarifa aplicada y el resultado.', 'Revisar los datos de cada operación.']} />; }
+"use client";
+
+import { useState } from "react";
+import { Cabecera } from "@/componentes/Cabecera";
+import { EventosConsulta } from "./EventosConsulta";
+import { CobrosConsulta } from "./CobrosConsulta";
+import estilos from "./Consulta.module.css";
+
+const vistas = ["Eventos", "Cobros"] as const;
+type Vista = (typeof vistas)[number];
+
+export default function ConsultaPage() {
+  const [vista, setVista] = useState<Vista>("Eventos");
+
+  return (
+    <div className="pagina">
+      <Cabecera
+        titulo="Consulta"
+        descripcion="Revisa los ingresos, las salidas y los cobros de tu sede."
+      />
+      <div className={estilos.panel}>
+        <div
+          className={estilos.vistas}
+          role="group"
+          aria-label="Tipo de registro"
+        >
+          {vistas.map((opcion) => (
+            <button
+              key={opcion}
+              type="button"
+              aria-pressed={vista === opcion}
+              aria-controls="resultados-consulta"
+              onClick={() => setVista(opcion)}
+            >
+              {opcion}
+            </button>
+          ))}
+        </div>
+        <section
+          id="resultados-consulta"
+          className={estilos.contenido}
+          aria-label={vista}
+        >
+          {vista === "Eventos" ? <EventosConsulta /> : <CobrosConsulta />}
+        </section>
+      </div>
+    </div>
+  );
+}
