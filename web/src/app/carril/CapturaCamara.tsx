@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Alerta } from "@/componentes/interfaz/Alerta";
 import { procesarImagenCarril } from "@/lib/carril";
 import { mensajeDeErrorApi } from "@/lib/mensaje-error-api";
@@ -11,12 +11,20 @@ function detener(stream: MediaStream | null) {
 }
 
 /** La cámara solo se solicita por acción del operador y nunca envía audio. */
-export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
+export function CapturaCamara({
+  sentido,
+  vehiculoPresente,
+}: {
+  sentido: "ENTRADA" | "SALIDA";
+  vehiculoPresente: boolean | null;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const generacion = useRef(0);
   const solicitud = useRef<AbortController | null>(null);
   const ocupado = useRef(false);
+  const presenciaAtendida = useRef(false);
+  const [automatica, setAutomatica] = useState(false);
   const [fase, setFase] = useState<"apagada" | "solicitando" | "activa">(
     "apagada",
   );
@@ -26,6 +34,25 @@ export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
   const [resultado, setResultado] = useState<string | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
   const operacion = sentido === "ENTRADA" ? "entrada" : "salida";
+
+  // Un sondeo fallido (null) no equivale a que el vehículo abandonó el carril.
+  const comprobarCapturaAutomatica = useEffectEvent(() => {
+    if (vehiculoPresente === false) presenciaAtendida.current = false;
+    if (
+      automatica &&
+      vehiculoPresente === true &&
+      fase === "activa" &&
+      listo &&
+      !ocupado.current &&
+      !presenciaAtendida.current
+    ) {
+      void capturar();
+    }
+  });
+
+  useEffect(() => {
+    comprobarCapturaAutomatica();
+  }, [vehiculoPresente, automatica, fase, listo, enviando]);
 
   useEffect(
     () => () => {
@@ -107,6 +134,8 @@ export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
     if (!imagenSeleccionada && (!visor || !listo || !stream.current?.active))
       return;
     ocupado.current = true;
+    // También cubre los envíos manuales para no duplicarlos automáticamente.
+    if (vehiculoPresente === true) presenciaAtendida.current = true;
     const control = new AbortController();
     solicitud.current = control;
     const destino = sentido;
@@ -219,6 +248,21 @@ export function CapturaCamara({ sentido }: { sentido: "ENTRADA" | "SALIDA" }) {
       <p className={estilos.nota}>
         La captura se enviará para {operacion}. El resultado aparecerá aquí y en
         el estado del carril.
+      </p>
+      <label className={estilos.capturaAutomatica}>
+        <input
+          type="checkbox"
+          checked={automatica}
+          onChange={(evento) => setAutomatica(evento.target.checked)}
+          aria-describedby="ayuda-captura-automatica"
+        />
+        Captura automática al detectar vehículo
+      </label>
+      <p id="ayuda-captura-automatica" className={estilos.nota}>
+        Con la cámara activa se enviará una captura de {operacion} por presencia
+        detectada. Para una nueva captura automática, el sondeo debe confirmar
+        primero que el carril quedó libre. Los errores no se reintentan
+        automáticamente.
       </p>
       <div className={estilos.cargaImagen}>
         <label htmlFor="imagen-alternativa">Imagen alternativa</label>

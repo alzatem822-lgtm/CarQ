@@ -1,9 +1,33 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const imagenPng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=",
   "base64",
 );
+
+async function controlarPresencia(page: Page, inicial = false) {
+  const sensor: { presente: boolean | null; consultas: number } = {
+    presente: inicial,
+    consultas: 0,
+  };
+  await page.route("**/carril/estado", async route => {
+    sensor.consultas++;
+    if (sensor.presente === null) {
+      await route.abort("failed");
+      return;
+    }
+    await route.fulfill({ json: {
+      simulacionHabilitada: false,
+      vehiculoPresente: sensor.presente,
+      sentido: null,
+      ultimaLectura: null,
+      ultimoResultado: null,
+      barrera: { estado: "CERRADA", motivo: null },
+      requiereValidacionManual: false,
+    } });
+  });
+  return sensor;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -238,5 +262,104 @@ test("CARQ-158: bloquea ambas fuentes durante el envío y conserva el error de l
   liberar();
   await expect(page.getByText("El lector no está disponible", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Enviar imagen para entrada" })).toBeEnabled();
+  expect(solicitudes).toBe(1);
+});
+
+test("CARQ-160: captura una vez por presencia, conserva destino y rearma al quedar libre", async ({ page }) => {
+  const sensor = await controlarPresencia(page);
+  const destinos: string[] = [];
+  page.on("request", r => {
+    if (r.method() === "POST") destinos.push(new URL(r.url()).pathname);
+  });
+  await page.goto("/carril");
+  await page.getByRole("button", { name: "Activar cámara" }).click();
+  await expect(page.getByRole("button", { name: "Capturar entrada" })).toBeEnabled();
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).check();
+  expect(destinos).toEqual([]);
+  sensor.presente = true;
+  await expect(page.getByText("Entrada: Se requiere validación manual", { exact: true })).toBeVisible();
+  await expect.poll(() => destinos).toEqual(["/carril/ingreso"]);
+  const consultas = sensor.consultas;
+  await expect.poll(() => sensor.consultas).toBeGreaterThan(consultas + 1);
+  await page.getByRole("radio", { name: /salida/i }).check();
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).uncheck();
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).check();
+  sensor.presente = null;
+  await expect(page.locator(".estado-pendiente").filter({ hasText: "Estado no disponible" })).toBeVisible();
+  sensor.presente = true;
+  await expect(page.getByText("Vehículo presente en el carril", { exact: true })).toBeVisible();
+  expect(destinos).toEqual(["/carril/ingreso"]);
+  sensor.presente = false;
+  await expect(page.getByText("Carril libre", { exact: true })).toBeVisible();
+  sensor.presente = true;
+  await expect(page.getByText("Salida: Se requiere validación manual", { exact: true })).toBeVisible();
+  expect(destinos).toEqual(["/carril/ingreso", "/carril/salida"]);
+});
+
+test("CARQ-160: espera cámara y activación explícita aunque ya exista presencia", async ({ page }) => {
+  const sensor = await controlarPresencia(page, true);
+  let solicitudes = 0;
+  page.on("request", r => { if (r.method() === "POST") solicitudes++; });
+  await page.goto("/carril");
+  await expect(page.getByText("Vehículo presente en el carril", { exact: true })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).check();
+  const consultas = sensor.consultas;
+  await expect.poll(() => sensor.consultas).toBeGreaterThan(consultas);
+  expect(solicitudes).toBe(0);
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).uncheck();
+  await page.getByRole("button", { name: "Activar cámara" }).click();
+  await expect(page.getByRole("button", { name: "Capturar entrada" })).toBeEnabled();
+  expect(solicitudes).toBe(0);
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).check();
+  await expect.poll(() => solicitudes).toBe(1);
+  await page.getByRole("button", { name: "Apagar cámara" }).click();
+  sensor.presente = false;
+  await expect(page.getByText("Carril libre", { exact: true })).toBeVisible();
+  sensor.presente = true;
+  await expect(page.getByText("Vehículo presente en el carril", { exact: true })).toBeVisible();
+  expect(solicitudes).toBe(1);
+});
+
+test("CARQ-160: no repite un envío automático fallido ni solapa capturas", async ({ page }) => {
+  const sensor = await controlarPresencia(page);
+  let solicitudes = 0;
+  let liberar!: () => void;
+  const pendiente = new Promise<void>(r => { liberar = r; });
+  await page.route("**/carril/ingreso", async route => {
+    solicitudes++;
+    await pendiente;
+    await route.fulfill({ status: 422, json: {
+      codigo: "BARRERA_NO_DISPONIBLE", motivo: "La operación quedó registrada; no se confirmó la barrera",
+    } });
+  });
+  await page.goto("/carril");
+  await page.getByRole("button", { name: "Activar cámara" }).click();
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).check();
+  sensor.presente = true;
+  await expect.poll(() => solicitudes).toBe(1);
+  await expect(page.getByRole("button", { name: "Procesando captura…" })).toBeDisabled();
+  const consultas = sensor.consultas;
+  await expect.poll(() => sensor.consultas).toBeGreaterThan(consultas);
+  expect(solicitudes).toBe(1);
+  liberar();
+  await expect(page.getByText("La operación quedó registrada; no se confirmó la barrera", { exact: true })).toBeVisible();
+  const posteriores = sensor.consultas;
+  await expect.poll(() => sensor.consultas).toBeGreaterThan(posteriores + 1);
+  expect(solicitudes).toBe(1);
+});
+
+test("CARQ-160: una imagen manual ya enviada no se duplica al activar el automático", async ({ page }) => {
+  await controlarPresencia(page, true);
+  let solicitudes = 0;
+  page.on("request", r => { if (r.method() === "POST") solicitudes++; });
+  await page.goto("/carril");
+  await expect(page.getByText("Vehículo presente en el carril", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Activar cámara" }).click();
+  await page.getByRole("button", { name: "Capturar entrada" }).click();
+  await expect(page.getByText("Entrada: Se requiere validación manual", { exact: true })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Captura automática al detectar vehículo" }).check();
+  await page.getByRole("button", { name: "Apagar cámara" }).click();
+  await page.getByRole("button", { name: "Activar cámara" }).click();
+  await expect(page.getByRole("button", { name: "Capturar entrada" })).toBeEnabled();
   expect(solicitudes).toBe(1);
 });

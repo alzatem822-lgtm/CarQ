@@ -389,6 +389,18 @@
 .capturaCamara {
   min-width: 0;
 }
+.capturaAutomatica {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  cursor: pointer;
+}
+.capturaAutomatica input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--oro);
+}
 
 .cargaImagen {
   display: grid;
