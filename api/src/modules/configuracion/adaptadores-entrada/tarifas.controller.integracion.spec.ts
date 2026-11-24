@@ -128,6 +128,21 @@ describe('Configuración de tarifas y franja (HTTP y PostgreSQL)', () => {
     });
   });
 
+  it('rechaza el escenario 7 y no guarda ninguna tarifa del lote (CARQ-211)', async () => {
+    const antes = await consultar().expect(200);
+
+    await actualizarTarifas([
+      { tipoVehiculo: 'MOTO', franja: 'DIURNA', valor: 2000 },
+      { tipoVehiculo: 'CARRO', franja: 'DIURNA', valor: 6000 },
+      { tipoVehiculo: 'CARRO', franja: 'NOCTURNA', valor: 7000 },
+    ]).expect(422, {
+      codigo: 'TARIFA_INVALIDA',
+      motivo: 'La tarifa nocturna debe ser menor que la diurna (1:CARRO)',
+    });
+
+    await consultar().expect(200, antes.body as object);
+  });
+
   it('revierte todos los cambios cuando PostgreSQL rechaza la segunda escritura', async () => {
     await db.query(
       'ALTER TABLE tarifa ADD CONSTRAINT ck_tarifa_prueba CHECK (valor <> 9999)',
