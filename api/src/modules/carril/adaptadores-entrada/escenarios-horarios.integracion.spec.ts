@@ -27,7 +27,9 @@ import { estadoCarrilInicial } from '../dominio/estado-carril';
 
 const SECRETO = 'carq-pruebas-escenarios-horarios';
 const PLACA = 'ABC226';
-const CLAVE_PASE = `carq:pase:1:${PLACA}:2026-11-23`;
+const CLAVES_PASE = ['2026-11-22', '2026-11-23'].map(
+  (dia) => `carq:pase:1:${PLACA}:${dia}`,
+);
 
 describe('Escenarios horarios por API con PostgreSQL y Redis reales', () => {
   let app: INestApplication;
@@ -80,7 +82,7 @@ describe('Escenarios horarios por API con PostgreSQL y Redis reales', () => {
 
   beforeEach(async () => {
     await limpiarBaseDatosPruebas(db);
-    await redis.del(CLAVE_PASE);
+    await redis.del(...CLAVES_PASE);
     for (const sembrar of [
       sembrarSedeYCarril,
       sembrarCupos,
@@ -96,7 +98,7 @@ describe('Escenarios horarios por API con PostgreSQL y Redis reales', () => {
     jest.clearAllMocks();
   });
   afterAll(async () => {
-    if (redis?.status === 'ready') await redis.del(CLAVE_PASE);
+    if (redis?.status === 'ready') await redis.del(...CLAVES_PASE);
     await app?.close();
     redis?.disconnect();
     if (db?.isInitialized) await db.destroy();
@@ -188,6 +190,112 @@ describe('Escenarios horarios por API con PostgreSQL y Redis reales', () => {
     );
     expect(barrera.abrir).toHaveBeenCalledTimes(5);
     expect(barrera.denegar).not.toHaveBeenCalled();
+  });
+
+  it('CARQ-229: salida tras el corte exige un nuevo cobro diurno aunque ya pagó la noche', async () => {
+    fijarHora('05:50');
+    await operar('ingreso').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Ingreso autorizado',
+    });
+    const [nocturno]: {
+      id: number;
+      dia_operativo: string;
+      franja: string;
+      tarifa_aplicada: number;
+    }[] = await db.query(
+      'SELECT id, dia_operativo::text, franja, tarifa_aplicada FROM cobro',
+    );
+    expect(nocturno).toMatchObject({
+      dia_operativo: '2026-11-22',
+      franja: 'NOCTURNA',
+      tarifa_aplicada: 3000,
+    });
+    fijarHora('05:55');
+    await request(app.getHttpServer())
+      .post('/pagos/efectivo')
+      .auth(token(), { type: 'bearer' })
+      .send({ cobroId: nocturno.id, referencia: 'carq-229-pago-noche' })
+      .expect(200);
+    barrera.abrir.mockClear();
+    fijarHora('09:00');
+    // El cobro del nuevo día se evalúa al solicitar la salida; no depende de un cron.
+    for (let intento = 0; intento < 2; intento++) {
+      await operar('salida').expect(200, {
+        resultado: 'RECHAZADO',
+        motivo: 'Cobro pendiente, pasar por caja',
+      });
+    }
+    expect(barrera.abrir).not.toHaveBeenCalled();
+    expect(barrera.denegar).toHaveBeenCalledTimes(2);
+    expect(await db.query('SELECT salida_en FROM estancia')).toEqual([
+      { salida_en: null },
+    ]);
+    const cobros = await db.query(
+      'SELECT id, dia_operativo::text, franja, tarifa_aplicada, estado FROM cobro ORDER BY dia_operativo',
+    );
+    expect(cobros).toEqual([
+      {
+        id: nocturno.id,
+        dia_operativo: '2026-11-22',
+        franja: 'NOCTURNA',
+        tarifa_aplicada: 3000,
+        estado: 'PAGADO',
+      },
+      {
+        id: expect.any(Number),
+        dia_operativo: '2026-11-23',
+        franja: 'DIURNA',
+        tarifa_aplicada: 5000,
+        estado: 'PENDIENTE',
+      },
+    ]);
+    expect(await db.query('SELECT cobro_id FROM pago')).toEqual([
+      { cobro_id: nocturno.id },
+    ]);
+    const pendientes = await request(app.getHttpServer())
+      .get(`/cobros/pendientes?placa=${PLACA}`)
+      .auth(token(), { type: 'bearer' })
+      .expect(200);
+    expect(pendientes.body.cobros).toHaveLength(1);
+    expect(pendientes.body.cobros[0].id).toBe(cobros[1].id);
+    await request(app.getHttpServer())
+      .post('/pagos/efectivo')
+      .auth(token(), { type: 'bearer' })
+      .send({ cobroId: cobros[1].id, referencia: 'carq-229-pago-dia' })
+      .expect(200);
+    fijarHora('09:05');
+    await operar('salida').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Cobro pagado',
+    });
+    expect(
+      await db.query('SELECT ingreso_en, salida_en FROM estancia'),
+    ).toEqual([
+      {
+        ingreso_en: new Date('2026-11-23T05:50:00-05:00'),
+        salida_en: new Date('2026-11-23T09:05:00-05:00'),
+      },
+    ]);
+    expect(
+      await db.query('SELECT cobro_id, monto FROM pago ORDER BY id'),
+    ).toEqual([
+      { cobro_id: nocturno.id, monto: 3000 },
+      { cobro_id: cobros[1].id, monto: 5000 },
+    ]);
+    expect(await db.query('SELECT estado FROM cobro ORDER BY id')).toEqual([
+      { estado: 'PAGADO' },
+      { estado: 'PAGADO' },
+    ]);
+    expect(
+      await db.query('SELECT sentido, resultado FROM evento ORDER BY id'),
+    ).toEqual([
+      { sentido: 'ENTRADA', resultado: 'AUTORIZADO' },
+      { sentido: 'SALIDA', resultado: 'RECHAZADO' },
+      { sentido: 'SALIDA', resultado: 'RECHAZADO' },
+      { sentido: 'SALIDA', resultado: 'AUTORIZADO' },
+    ]);
+    expect(barrera.abrir).toHaveBeenCalledTimes(1);
   });
 
   it('CARQ-228: ingreso a las 23:00 y salida a la 01:00 conservan un solo cobro nocturno', async () => {
