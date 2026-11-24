@@ -1,6 +1,9 @@
 name: Suite completa
 
 on:
+  push:
+    tags:
+      - "v*"
   pull_request:
     branches: [main, develop]
     paths:
@@ -34,7 +37,7 @@ jobs:
         working-directory: web
       - run: npm test
       - if: failure()
-        run: docker compose --profile pruebas --profile ocr logs db_pruebas redis_pruebas lpr
+        run: docker compose --profile pruebas --profile ocr logs db_pruebas redis_pruebas mqtt_pruebas lpr
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
