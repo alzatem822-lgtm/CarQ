@@ -21,13 +21,15 @@ import { sembrarUmbral } from '../../../compartido/base-datos/seeds/umbral.seed'
 import { Reloj } from '../../../compartido/reloj/reloj';
 import { RelojFijo } from '../../../compartido/reloj/reloj-fijo';
 import { DiaOperativo } from '../../../compartido/tiempo/dia-operativo';
+import { ConsultarPaseVigente } from '../../cobros/aplicacion/consultar-pase-vigente';
+import { Placa } from '../../vehiculos/dominio/placa';
 import { BarreraCarril } from '../aplicacion/barrera-carril';
 import { EstadoCarrilStore } from '../aplicacion/estado-carril.store';
 import { estadoCarrilInicial } from '../dominio/estado-carril';
 
 const SECRETO = 'carq-pruebas-escenarios-horarios';
 const PLACA = 'ABC226';
-const CLAVES_PASE = ['2026-11-22', '2026-11-23'].map(
+const CLAVES_PASE = ['2026-11-22', '2026-11-23', '2026-11-24'].map(
   (dia) => `carq:pase:1:${PLACA}:${dia}`,
 );
 
@@ -296,6 +298,94 @@ describe('Escenarios horarios por API con PostgreSQL y Redis reales', () => {
       { sentido: 'SALIDA', resultado: 'AUTORIZADO' },
     ]);
     expect(barrera.abrir).toHaveBeenCalledTimes(1);
+  });
+
+  it('CARQ-230: el pago del lunes no cubre el ingreso del martes a las 07:00', async () => {
+    await operar('ingreso').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Ingreso autorizado',
+    });
+    const lunes = await request(app.getHttpServer())
+      .get(`/cobros/pendientes?placa=${PLACA}`)
+      .auth(token(), { type: 'bearer' })
+      .expect(200);
+    expect(lunes.body.cobros).toHaveLength(1);
+    const original = lunes.body.cobros[0];
+    fijarHora('10:00');
+    await request(app.getHttpServer())
+      .post('/pagos/efectivo')
+      .auth(token(), { type: 'bearer' })
+      .send({ cobroId: original.id, referencia: 'carq-230-pago-lunes' })
+      .expect(200);
+    const pases = app.get(ConsultarPaseVigente);
+    const placa = Placa.crear(PLACA);
+    const paseLunes = await pases.ejecutar(placa, 1);
+    expect(paseLunes).toMatchObject({
+      cobroId: original.id,
+      diaOperativo: '2026-11-23',
+      venceEn: new Date('2026-11-24T06:00:00-05:00'),
+    });
+    fijarHora('12:00');
+    await operar('salida').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Cobro pagado',
+    });
+
+    reloj.fijar(new Date('2026-11-24T07:00:00-05:00'));
+    expect(paseLunes!.venceEn.getTime()).toBeLessThan(reloj.ahora().getTime());
+    expect(await pases.ejecutar(placa, 1)).toBeNull();
+    await operar('ingreso').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Ingreso autorizado',
+    });
+    const pendientes = await request(app.getHttpServer())
+      .get(`/cobros/pendientes?placa=${PLACA}`)
+      .auth(token(), { type: 'bearer' })
+      .expect(200);
+    expect(pendientes.body.cobros).toHaveLength(1);
+    const nuevo = pendientes.body.cobros[0];
+    expect(nuevo.id).not.toBe(original.id);
+    expect(nuevo).toMatchObject({
+      diaOperativo: '2026-11-24',
+      franja: 'DIURNA',
+      tarifaAplicada: 5000,
+      estado: 'PENDIENTE',
+    });
+    expect(
+      await db.query(
+        'SELECT id, dia_operativo::text, estado FROM cobro ORDER BY dia_operativo',
+      ),
+    ).toEqual([
+      { id: original.id, dia_operativo: '2026-11-23', estado: 'PAGADO' },
+      { id: nuevo.id, dia_operativo: '2026-11-24', estado: 'PENDIENTE' },
+    ]);
+    expect(await db.query('SELECT cobro_id, referencia FROM pago')).toEqual([
+      { cobro_id: original.id, referencia: 'carq-230-pago-lunes' },
+    ]);
+    reloj.fijar(new Date('2026-11-24T07:05:00-05:00'));
+    await operar('salida').expect(200, {
+      resultado: 'RECHAZADO',
+      motivo: 'Cobro pendiente, pasar por caja',
+    });
+    expect(
+      await db.query('SELECT ingreso_en, salida_en FROM estancia ORDER BY id'),
+    ).toEqual([
+      {
+        ingreso_en: new Date('2026-11-23T08:00:00-05:00'),
+        salida_en: new Date('2026-11-23T12:00:00-05:00'),
+      },
+      { ingreso_en: new Date('2026-11-24T07:00:00-05:00'), salida_en: null },
+    ]);
+    expect(
+      await db.query('SELECT sentido, resultado FROM evento ORDER BY id'),
+    ).toEqual([
+      { sentido: 'ENTRADA', resultado: 'AUTORIZADO' },
+      { sentido: 'SALIDA', resultado: 'AUTORIZADO' },
+      { sentido: 'ENTRADA', resultado: 'AUTORIZADO' },
+      { sentido: 'SALIDA', resultado: 'RECHAZADO' },
+    ]);
+    expect(barrera.abrir).toHaveBeenCalledTimes(3);
+    expect(barrera.denegar).toHaveBeenCalledTimes(1);
   });
 
   it('CARQ-228: ingreso a las 23:00 y salida a la 01:00 conservan un solo cobro nocturno', async () => {
