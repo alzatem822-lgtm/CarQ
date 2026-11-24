@@ -3,6 +3,7 @@ import { ModuloBaseDatos } from './compartido/base-datos/modulo-base-datos';
 import { ModuloConfiguracionSistema } from './compartido/configuracion/modulo-configuracion-sistema';
 import { ModuloLogging } from './compartido/logging/modulo-logging';
 import { ModuloRedis } from './compartido/redis/modulo-redis';
+import { ModuloMqtt } from './compartido/mqtt/modulo-mqtt';
 import { VehiculosModule } from './modules/vehiculos/vehiculos.module';
 import { AccesoModule } from './modules/acceso/acceso.module';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
@@ -17,6 +18,7 @@ import { SimulacionCarrilModule } from './modules/carril/simulacion-carril.modul
     ModuloConfiguracionSistema,
     ModuloLogging,
     ModuloRedis,
+    ModuloMqtt,
     ModuloBaseDatos,
     VehiculosModule,
     AccesoModule,
