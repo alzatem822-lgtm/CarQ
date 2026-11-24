@@ -9,7 +9,10 @@ import { crearLectorPlaca } from './infraestructura/fabrica-lector-placa';
       provide: LectorPlaca,
       inject: [ConfiguracionSistema],
       useFactory: (configuracion: ConfiguracionSistema): LectorPlaca =>
-        crearLectorPlaca(configuracion.obtener('LECTOR_PLACAS')),
+        crearLectorPlaca(
+          configuracion.obtener('LECTOR_PLACAS'),
+          configuracion.obtener('URL_LPR'),
+        ),
     },
   ],
   exports: [LectorPlaca],

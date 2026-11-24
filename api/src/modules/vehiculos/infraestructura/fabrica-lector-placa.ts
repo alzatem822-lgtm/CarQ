@@ -2,23 +2,28 @@ import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 import { LectorPlaca } from '../aplicacion/lector-placa';
 import { LectorSimulado } from './lector-simulado';
 import { LectorManual } from './lector-manual';
+import { LectorOcr } from './lector-ocr';
 
 export type TipoLector = 'simulado' | 'manual' | 'http';
 
 /**
  * Elige la implementación de LectorPlaca según LECTOR_PLACAS.
- * El lector HTTP permanece no disponible hasta integrar el servicio OCR.
  */
-export function crearLectorPlaca(tipo: TipoLector): LectorPlaca {
+export function crearLectorPlaca(
+  tipo: TipoLector,
+  urlLpr?: string,
+): LectorPlaca {
   switch (tipo) {
     case 'simulado':
       return new LectorSimulado();
     case 'manual':
       return new LectorManual();
     case 'http':
-      throw new ErrorDominio(
-        'LECTOR_NO_DISPONIBLE',
-        `El lector de placas "${tipo}" aún no está disponible`,
-      );
+      if (!urlLpr)
+        throw new ErrorDominio(
+          'URL_LPR_REQUERIDA',
+          'El lector OCR requiere la URL del servicio LPR',
+        );
+      return new LectorOcr(urlLpr);
   }
 }

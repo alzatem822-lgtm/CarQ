@@ -2,6 +2,7 @@ import { ErrorDominio } from '../../../compartido/errores/error-dominio';
 import { crearLectorPlaca } from './fabrica-lector-placa';
 import { LectorSimulado } from './lector-simulado';
 import { LectorManual } from './lector-manual';
+import { LectorOcr } from './lector-ocr';
 
 describe('crearLectorPlaca', () => {
   it('devuelve el lector simulado cuando el tipo es simulado', () => {
@@ -17,16 +18,12 @@ describe('crearLectorPlaca', () => {
     });
   });
 
-  it.each(['http'] as const)(
-    'falla con LECTOR_NO_DISPONIBLE cuando el tipo es %s',
-    (tipo) => {
-      try {
-        crearLectorPlaca(tipo);
-        fail('Debió lanzar ErrorDominio');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ErrorDominio);
-        expect((error as ErrorDominio).codigo).toBe('LECTOR_NO_DISPONIBLE');
-      }
-    },
-  );
+  it('selecciona OCR con su URL sin conectarse durante la construcción', () => {
+    expect(crearLectorPlaca('http', 'http://lpr:8000')).toBeInstanceOf(
+      LectorOcr,
+    );
+  });
+  it('requiere URL para seleccionar OCR', () => {
+    expect(() => crearLectorPlaca('http')).toThrow(ErrorDominio);
+  });
 });
