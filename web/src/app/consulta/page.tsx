@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Cabecera } from "@/componentes/Cabecera";
-import estilos from "./Consulta.module.css";
+import { EventosConsulta } from './EventosConsulta';
+import estilos from './Consulta.module.css';
 
 const vistas = ["Eventos", "Cobros"] as const;
 type Vista = (typeof vistas)[number];
@@ -31,7 +32,7 @@ export default function ConsultaPage() {
           ))}
         </div>
         <section id="resultados-consulta" className={estilos.contenido} aria-label={vista}>
-          <h2>{vista}</h2>
+          {vista === "Eventos" ? <EventosConsulta /> : <h2>Cobros</h2>}
         </section>
       </div>
     </div>

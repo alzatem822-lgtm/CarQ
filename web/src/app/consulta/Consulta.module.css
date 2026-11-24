@@ -41,3 +41,31 @@
 .contenido h2 {
   font-size: 18px;
 }
+
+.tabla {
+  overflow-x: auto;
+}
+
+.tabla table {
+  min-width: 610px;
+}
+
+.paginacion {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.paginacion span,
+.estado {
+  color: var(--suave);
+}
+
+.error {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
