@@ -29,12 +29,17 @@ export class LectorOcr extends LectorPlaca {
 
   async leer(solicitud: SolicitudLectura): Promise<LecturaPlaca> {
     if (!solicitud.imagen?.length) return { ...SIN_PLACA };
+    try {
+      return await this.leerImagen(solicitud.imagen);
+    } catch {
+      // Timeout, fallo de red o respuesta inválida: nunca autorizar ni reintentar.
+      return { ...SIN_PLACA };
+    }
+  }
+
+  private async leerImagen(imagen: Buffer): Promise<LecturaPlaca> {
     const cuerpo = new FormData();
-    cuerpo.append(
-      'imagen',
-      new Blob([Uint8Array.from(solicitud.imagen)]),
-      'captura',
-    );
+    cuerpo.append('imagen', new Blob([Uint8Array.from(imagen)]), 'captura');
     const respuesta = await fetch(this.ruta, {
       method: 'POST',
       body: cuerpo,

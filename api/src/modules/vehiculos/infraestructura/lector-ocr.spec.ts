@@ -8,6 +8,8 @@ describe('LectorOcr (CARQ-89)', () => {
   let url: string;
   let cuerpo: unknown;
   let estado: number;
+  let modo:
+    'normal' | 'sin-cabeceras' | 'sin-cuerpo' | 'json-invalido' | 'cortar';
   let peticiones: {
     ruta: string;
     metodo: string;
@@ -24,7 +26,20 @@ describe('LectorOcr (CARQ-89)', () => {
         tipo: req.headers['content-type'] ?? '',
         datos: Buffer.concat(fragmentos),
       });
+      if (modo === 'sin-cabeceras') return;
+      if (modo === 'cortar') {
+        res.destroy();
+        return;
+      }
       res.writeHead(estado, { 'Content-Type': 'application/json' });
+      if (modo === 'sin-cuerpo') {
+        res.flushHeaders();
+        return;
+      }
+      if (modo === 'json-invalido') {
+        res.end('{');
+        return;
+      }
       res.end(JSON.stringify(cuerpo));
     });
     await new Promise<void>((resolver) =>
@@ -42,6 +57,7 @@ describe('LectorOcr (CARQ-89)', () => {
     peticiones = [];
     cuerpo = { placa: 'ABC123', confianza: 0.91 };
     estado = 200;
+    modo = 'normal';
   });
 
   it.each(['ABC123', 'ABC12A'])(
@@ -119,19 +135,48 @@ describe('LectorOcr (CARQ-89)', () => {
     { placa: 'ABC123', confianza: 2 },
     { placa: null, confianza: 0.9 },
     { placa: 'A'.repeat(33), confianza: 0.9 },
-  ])('rechaza contrato LPR inválido: %j', async (respuesta) => {
-    cuerpo = respuesta;
-    await expect(
-      new LectorOcr(url).leer({ imagen: Buffer.from('foto') }),
-    ).rejects.toMatchObject({ codigo: 'RESPUESTA_LPR_INVALIDA' });
-  });
+  ])(
+    'CARQ-90: contrato LPR inválido solicita lectura manual: %j',
+    async (respuesta) => {
+      cuerpo = respuesta;
+      await expect(
+        new LectorOcr(url).leer({ imagen: Buffer.from('foto') }),
+      ).resolves.toEqual({ placa: null, confianza: 0, origen: 'OCR' });
+    },
+  );
 
   it('no interpreta un error HTTP como detección exitosa', async () => {
     estado = 503;
     await expect(
       new LectorOcr(url).leer({ imagen: Buffer.from('foto') }),
-    ).rejects.toMatchObject({ codigo: 'LPR_NO_DISPONIBLE' });
+    ).resolves.toEqual({ placa: null, confianza: 0, origen: 'OCR' });
     expect(peticiones).toHaveLength(1);
+  });
+
+  it.each(['sin-cabeceras', 'sin-cuerpo', 'json-invalido', 'cortar'] as const)(
+    'CARQ-90: %s devuelve lectura manual sin reintento',
+    async (fallo) => {
+      modo = fallo;
+      await expect(
+        new LectorOcr(url, 150).leer({ imagen: Buffer.from('foto') }),
+      ).resolves.toEqual({ placa: null, confianza: 0, origen: 'OCR' });
+      expect(peticiones).toHaveLength(1);
+      servidor.closeAllConnections();
+    },
+  );
+
+  it('CARQ-90: conexión rechazada devuelve lectura manual', async () => {
+    const cerrado = createServer();
+    await new Promise<void>((resolver) =>
+      cerrado.listen(0, '127.0.0.1', resolver),
+    );
+    const puerto = (cerrado.address() as AddressInfo).port;
+    await new Promise<void>((resolver) => cerrado.close(() => resolver()));
+    await expect(
+      new LectorOcr(`http://127.0.0.1:${puerto}`).leer({
+        imagen: Buffer.from('foto'),
+      }),
+    ).resolves.toEqual({ placa: null, confianza: 0, origen: 'OCR' });
   });
 
   it.each(['', 'no-es-url', 'file:///tmp/modelo'])(
