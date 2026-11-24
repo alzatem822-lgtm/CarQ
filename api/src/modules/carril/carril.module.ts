@@ -1,4 +1,7 @@
 import { SalidaController } from './adaptadores-entrada/salida.controller';
+import { LecturaManualController } from './adaptadores-entrada/lectura-manual.controller';
+import { ConfirmarLecturaManual } from './aplicacion/confirmar-lectura-manual';
+import { LectorManual } from '../vehiculos/infraestructura/lector-manual';
 import type { Redis } from 'ioredis';
 import { CLIENTE_REDIS } from '../../compartido/redis/modulo-redis';
 import { PaseVigenteRepository } from '../cobros/aplicacion/pase-vigente.repository';
@@ -45,8 +48,15 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
     EstadoCarrilController,
     IngresoController,
     SalidaController,
+    LecturaManualController,
   ],
   providers: [
+    {
+      provide: ConfirmarLecturaManual,
+      useFactory: (ingreso: ProcesarIngreso, salida: ProcesarSalida) =>
+        new ConfirmarLecturaManual(new LectorManual(), ingreso, salida),
+      inject: [ProcesarIngreso, ProcesarSalida],
+    },
     {
       provide: PaseVigenteRepository,
       useFactory: (redis: Redis, reloj: Reloj) =>

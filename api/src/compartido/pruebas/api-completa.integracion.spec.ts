@@ -606,6 +606,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       'get /carril/estado',
       'post /carril/ingreso',
       'post /carril/salida',
+      'post /carril/lectura-manual',
       'post /carril/simulacion/llegada',
       ...operaciones.map((o) => `${o.metodo} ${o.ruta}`),
     ].sort();
