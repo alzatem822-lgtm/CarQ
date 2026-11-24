@@ -1,4 +1,5 @@
 import { SalidaController } from './adaptadores-entrada/salida.controller';
+import { LecturaManualController } from './adaptadores-entrada/lectura-manual.controller';
 import { ConfirmarLecturaManual } from './aplicacion/confirmar-lectura-manual';
 import { LectorManual } from '../vehiculos/infraestructura/lector-manual';
 import type { Redis } from 'ioredis';
@@ -47,6 +48,7 @@ import { EventoPostgresRepository } from './infraestructura/evento-postgres.repo
     EstadoCarrilController,
     IngresoController,
     SalidaController,
+    LecturaManualController,
   ],
   providers: [
     {
