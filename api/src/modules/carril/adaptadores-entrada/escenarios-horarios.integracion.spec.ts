@@ -20,6 +20,7 @@ import { sembrarTarifasYFranja } from '../../../compartido/base-datos/seeds/tari
 import { sembrarUmbral } from '../../../compartido/base-datos/seeds/umbral.seed';
 import { Reloj } from '../../../compartido/reloj/reloj';
 import { RelojFijo } from '../../../compartido/reloj/reloj-fijo';
+import { DiaOperativo } from '../../../compartido/tiempo/dia-operativo';
 import { BarreraCarril } from '../aplicacion/barrera-carril';
 import { EstadoCarrilStore } from '../aplicacion/estado-carril.store';
 import { estadoCarrilInicial } from '../dominio/estado-carril';
@@ -186,6 +187,74 @@ describe('Escenarios horarios por API con PostgreSQL y Redis reales', () => {
       })),
     );
     expect(barrera.abrir).toHaveBeenCalledTimes(5);
+    expect(barrera.denegar).not.toHaveBeenCalled();
+  });
+
+  it('CARQ-228: ingreso a las 23:00 y salida a la 01:00 conservan un solo cobro nocturno', async () => {
+    const ingreso = new Date('2026-11-23T23:00:00-05:00');
+    const salida = new Date('2026-11-24T01:00:00-05:00');
+    const dias = new DiaOperativo('America/Bogota', '06:00');
+    expect(dias.de(ingreso)).toBe('2026-11-23');
+    expect(dias.de(salida)).toBe('2026-11-23');
+    reloj.fijar(ingreso);
+    await operar('ingreso').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Ingreso autorizado',
+    });
+    const pendientes = await request(app.getHttpServer())
+      .get(`/cobros/pendientes?placa=${PLACA}`)
+      .auth(token(), { type: 'bearer' })
+      .expect(200);
+    expect(pendientes.body.cobros).toHaveLength(1);
+    const original = pendientes.body.cobros[0];
+    expect(original).toMatchObject({
+      franja: 'NOCTURNA',
+      diaOperativo: '2026-11-23',
+      tarifaAplicada: 3000,
+    });
+    reloj.fijar(new Date('2026-11-23T23:05:00-05:00'));
+    const pago = await request(app.getHttpServer())
+      .post('/pagos/efectivo')
+      .auth(token(), { type: 'bearer' })
+      .send({ cobroId: original.id, referencia: 'carq-228-pago-nocturno' })
+      .expect(200);
+    expect(pago.body).toMatchObject({
+      cobro: { id: original.id, estado: 'PAGADO' },
+      pago: { monto: 3000 },
+    });
+    reloj.fijar(salida);
+    await operar('salida').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Cobro pagado',
+    });
+    expect(
+      await db.query(
+        'SELECT id, dia_operativo::text, franja, tarifa_aplicada, estado FROM cobro',
+      ),
+    ).toEqual([
+      {
+        id: original.id,
+        dia_operativo: '2026-11-23',
+        franja: 'NOCTURNA',
+        tarifa_aplicada: 3000,
+        estado: 'PAGADO',
+      },
+    ]);
+    expect(await db.query('SELECT cobro_id, monto FROM pago')).toEqual([
+      { cobro_id: original.id, monto: 3000 },
+    ]);
+    expect(
+      await db.query('SELECT ingreso_en, salida_en FROM estancia'),
+    ).toEqual([{ ingreso_en: ingreso, salida_en: salida }]);
+    expect(
+      await db.query(
+        'SELECT sentido, resultado, ocurrido_en FROM evento ORDER BY id',
+      ),
+    ).toEqual([
+      { sentido: 'ENTRADA', resultado: 'AUTORIZADO', ocurrido_en: ingreso },
+      { sentido: 'SALIDA', resultado: 'AUTORIZADO', ocurrido_en: salida },
+    ]);
+    expect(barrera.abrir).toHaveBeenCalledTimes(2);
     expect(barrera.denegar).not.toHaveBeenCalled();
   });
 
