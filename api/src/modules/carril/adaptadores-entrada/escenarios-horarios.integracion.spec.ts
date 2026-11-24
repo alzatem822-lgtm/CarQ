@@ -188,4 +188,45 @@ describe('Escenarios horarios por API con PostgreSQL y Redis reales', () => {
     expect(barrera.abrir).toHaveBeenCalledTimes(5);
     expect(barrera.denegar).not.toHaveBeenCalled();
   });
+
+  it('CARQ-227: primer ingreso a las 19:00 genera un único cobro nocturno menor que el diurno', async () => {
+    fijarHora('19:00');
+    await operar('ingreso').expect(200, {
+      resultado: 'AUTORIZADO',
+      motivo: 'Ingreso autorizado',
+    });
+    const cobros = await db.query(
+      'SELECT placa, dia_operativo::text, franja, tarifa_aplicada, estado FROM cobro',
+    );
+    expect(cobros).toEqual([
+      {
+        placa: PLACA,
+        dia_operativo: '2026-11-23',
+        franja: 'NOCTURNA',
+        tarifa_aplicada: 3000,
+        estado: 'PENDIENTE',
+      },
+    ]);
+    const [diurna]: { valor: number }[] = await db.query(
+      "SELECT valor FROM tarifa WHERE tipo_vehiculo = 'CARRO' AND franja = 'DIURNA'",
+    );
+    expect(cobros[0].tarifa_aplicada).toBeLessThan(diurna.valor);
+    expect(
+      await db.query('SELECT ingreso_en, salida_en FROM estancia'),
+    ).toEqual([
+      { ingreso_en: new Date('2026-11-23T19:00:00-05:00'), salida_en: null },
+    ]);
+    expect(
+      await db.query('SELECT sentido, resultado, ocurrido_en FROM evento'),
+    ).toEqual([
+      {
+        sentido: 'ENTRADA',
+        resultado: 'AUTORIZADO',
+        ocurrido_en: new Date('2026-11-23T19:00:00-05:00'),
+      },
+    ]);
+    expect(await db.query('SELECT id FROM pago')).toHaveLength(0);
+    expect(barrera.abrir).toHaveBeenCalledTimes(1);
+    expect(barrera.denegar).not.toHaveBeenCalled();
+  });
 });
