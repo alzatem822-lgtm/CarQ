@@ -3,6 +3,7 @@ import { createServer, type Server, type Socket } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import type { MqttClient } from 'mqtt';
 import { crearClienteMqtt } from './crear-cliente-mqtt';
+import { esperarEventoMqtt } from '../pruebas/esperar-evento-mqtt';
 
 describe('crearClienteMqtt (CARQ-183)', () => {
   let cliente: MqttClient | undefined;
@@ -53,7 +54,11 @@ describe('crearClienteMqtt (CARQ-183)', () => {
     cliente = crearClienteMqtt('mqtt://usuario:clave@127.0.0.1:1', registrar);
     cliente.emit('error', new Error('mqtt://usuario:clave@broker secreto'));
     cliente.emit('offline');
-    cliente.emit('connect', { cmd: 'connack', returnCode: 0 });
+    cliente.emit('connect', {
+      cmd: 'connack',
+      returnCode: 0,
+      sessionPresent: false,
+    });
     cliente.emit('offline');
     expect(registrar.mock.calls).toEqual([
       ['desconectado'],
@@ -75,12 +80,12 @@ describe('crearClienteMqtt (CARQ-183)', () => {
     const puerto = (servidor.address() as AddressInfo).port;
     const registrar = jest.fn();
     cliente = crearClienteMqtt(`mqtt://127.0.0.1:${puerto}`, registrar);
-    const conectado = once(cliente, 'connect');
+    const conectado = esperarEventoMqtt(cliente, 'connect');
     cliente.connect();
     await conectado;
     expect(cliente.connected).toBe(true);
 
-    const cerrado = once(cliente, 'close');
+    const cerrado = esperarEventoMqtt(cliente, 'close');
     const servidorCerrado = new Promise<void>((resolver) =>
       servidor!.close(() => resolver()),
     );
@@ -91,7 +96,7 @@ describe('crearClienteMqtt (CARQ-183)', () => {
     await new Promise<void>((resolver) =>
       cliente!.once('error', () => resolver()),
     );
-    const reconectado = once(cliente, 'connect');
+    const reconectado = esperarEventoMqtt(cliente, 'connect');
     servidor.listen(puerto, '127.0.0.1');
     await once(servidor, 'listening');
     await reconectado;

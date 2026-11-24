@@ -176,7 +176,7 @@ describe('Publicación de comandos de barrera MQTT (CARQ-187)', () => {
 
   it('consultar devuelve una copia del último estado conocido', async () => {
     const consulta = await barrera.consultarEstado();
-    consulta.motivo = 'Cambio externo';
+    Reflect.set(consulta, 'motivo', 'Cambio externo');
     expect((await estado.obtener()).barrera.motivo).toBeNull();
   });
 

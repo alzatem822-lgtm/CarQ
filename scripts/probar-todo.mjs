@@ -48,9 +48,10 @@ const entornoPruebas = {
   URL_BASE_DATOS_PRUEBAS: valoresPruebas.URL_BASE_DATOS_PRUEBAS,
   URL_REDIS_PRUEBAS: valoresPruebas.URL_REDIS_PRUEBAS,
   URL_LPR_PRUEBAS: valoresPruebas.URL_LPR_PRUEBAS,
+  URL_MQTT_PRUEBAS: valoresPruebas.URL_MQTT_PRUEBAS,
 };
 
-ejecutar("PostgreSQL, Redis y OCR de pruebas", "docker", [
+ejecutar("PostgreSQL, Redis, MQTT y OCR de pruebas", "docker", [
   "compose",
   "--env-file",
   ".env.example",
@@ -66,6 +67,7 @@ ejecutar("PostgreSQL, Redis y OCR de pruebas", "docker", [
   "120",
   "db_pruebas",
   "redis_pruebas",
+  "mqtt_pruebas",
   "lpr",
 ]);
 ejecutarNpm("Unitarias de la API", [
@@ -89,6 +91,12 @@ ejecutarNpm("Integración con PostgreSQL y Redis", [
   "test:integracion",
 ]);
 ejecutarNpm("Integración con OCR real", ["--prefix", "api", "run", "test:lpr"]);
+ejecutarNpm("Integración con MQTT real", [
+  "--prefix",
+  "api",
+  "run",
+  "test:mqtt",
+]);
 ejecutarNpm("E2E de navegación y Cámara", [
   "--prefix",
   "web",
