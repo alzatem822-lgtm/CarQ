@@ -1,0 +1,29 @@
+name: Lector OCR real
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths: ['api/**', 'lpr/**', 'docker-compose.yml', '.github/workflows/lector-ocr.yml']
+  push:
+    branches: [main, develop]
+    paths: ['api/**', 'lpr/**', 'docker-compose.yml', '.github/workflows/lector-ocr.yml']
+
+jobs:
+  integracion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: cp .env.example .env
+      - run: npm --prefix api ci
+      - run: docker compose --profile pruebas --profile ocr up -d --build --wait db_pruebas redis_pruebas lpr
+      - run: npm --prefix api run test:lpr
+      - if: failure()
+        run: docker compose --profile pruebas --profile ocr logs lpr db_pruebas redis_pruebas
+      - if: always()
+        run: docker compose --profile pruebas --profile ocr down

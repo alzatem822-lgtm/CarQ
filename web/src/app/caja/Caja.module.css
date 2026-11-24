@@ -1,0 +1,97 @@
+.paneles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.panel h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.busqueda {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.lista {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  color: var(--texto);
+  background: var(--fondo);
+  text-align: left;
+}
+
+.fila:hover,
+.fila[aria-pressed="true"] {
+  border-color: var(--oro);
+}
+
+.detalle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.detalle dt {
+  color: var(--suave);
+  font-size: 12px;
+}
+
+.detalle dd {
+  margin: 3px 0 0;
+}
+
+.importe {
+  color: var(--oro);
+  font-weight: 700;
+}
+
+.pago {
+  border-top: 1px solid var(--borde);
+  padding-top: 16px;
+  margin-bottom: 12px;
+}
+
+.estado {
+  color: var(--suave);
+  margin: 8px 0 0;
+}
+
+@media (max-width: 940px) {
+  .paneles {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .busqueda {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,32 @@
+import { Module } from '@nestjs/common';
+import { ModuloBaseDatos } from './compartido/base-datos/modulo-base-datos';
+import { ModuloConfiguracionSistema } from './compartido/configuracion/modulo-configuracion-sistema';
+import { ModuloLogging } from './compartido/logging/modulo-logging';
+import { ModuloRedis } from './compartido/redis/modulo-redis';
+import { ModuloMqtt } from './compartido/mqtt/modulo-mqtt';
+import { VehiculosModule } from './modules/vehiculos/vehiculos.module';
+import { AccesoModule } from './modules/acceso/acceso.module';
+import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
+import { CarrilModule } from './modules/carril/carril.module';
+import { CobrosModule } from './modules/cobros/cobros.module';
+import { ConsultaModule } from './modules/consulta/consulta.module';
+import { registrarConSensorSimulado } from './compartido/configuracion/registrar-con-sensor-simulado';
+import { SimulacionCarrilModule } from './modules/carril/simulacion-carril.module';
+
+@Module({
+  imports: [
+    ModuloConfiguracionSistema,
+    ModuloLogging,
+    ModuloRedis,
+    ModuloMqtt,
+    ModuloBaseDatos,
+    VehiculosModule,
+    AccesoModule,
+    ConfiguracionModule,
+    CarrilModule,
+    registrarConSensorSimulado(SimulacionCarrilModule),
+    CobrosModule,
+    ConsultaModule,
+  ],
+})
+export class AppModule {}

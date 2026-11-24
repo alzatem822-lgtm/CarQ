@@ -1,0 +1,39 @@
+name: Flujo operador E2E
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths: ['api/**', 'web/**', 'docker-compose.yml', '.github/workflows/operador-e2e.yml']
+  push:
+    branches: [main, develop]
+    paths: ['api/**', 'web/**', 'docker-compose.yml', '.github/workflows/operador-e2e.yml']
+
+jobs:
+  flujo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            web/package-lock.json
+      - run: cp .env.example .env
+      - run: npm --prefix api ci
+      - run: npm --prefix web ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: docker compose --profile pruebas up -d --wait db_pruebas redis_pruebas
+      - run: npm --prefix web run test:e2e:operador
+      - run: npm --prefix web run test:e2e:administracion
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: operador-e2e-resultados
+          path: web/test-results/
+          retention-days: 7
+      - if: always()
+        run: docker compose --profile pruebas down
