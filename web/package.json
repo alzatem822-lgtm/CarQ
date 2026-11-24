@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:operador": "playwright test --config=playwright.operador.config.ts"
   },
   "dependencies": {
     "next": "16.4.6",
