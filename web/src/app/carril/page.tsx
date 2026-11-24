@@ -10,6 +10,11 @@ import type { EstadoCarril } from "@/lib/carril";
 import estilos from "./Carril.module.css";
 import { CapturaCamara } from "./CapturaCamara";
 import { PanelSimulacion } from "./PanelSimulacion";
+import { PanelLecturaManual } from "./PanelLecturaManual";
+import {
+  useOperacionCarril,
+  type ControlOperacionCarril,
+} from "@/lib/usar-operacion-carril";
 
 type SentidoCarril = "ENTRADA" | "SALIDA";
 
@@ -18,11 +23,13 @@ function LecturaCarril({
   estado,
   cargando,
   error,
+  operacionEnCurso,
 }: {
   sentido: SentidoCarril;
   estado: EstadoCarril | null;
   cargando: boolean;
   error: string | null;
+  operacionEnCurso: ControlOperacionCarril;
 }) {
   const operacion = sentido === "ENTRADA" ? "entrada" : "salida";
   const lectura = error ? null : estado?.ultimaLectura;
@@ -46,6 +53,7 @@ function LecturaCarril({
         <span className={estilos.destino}>Captura de {operacion}</span>
       </header>
       <CapturaCamara
+        operacion={operacionEnCurso}
         sentido={sentido}
         vehiculoPresente={
           error || cargando ? null : (estado?.vehiculoPresente ?? null)
@@ -91,6 +99,7 @@ export default function CarrilPage() {
   const [sentido, setSentido] = useState<SentidoCarril>("ENTRADA");
   const { estado, cargando, error } = useEstadoCarril();
   const ocupacion = useOcupacionCarril();
+  const operacionEnCurso = useOperacionCarril();
   return (
     <div className="pagina">
       <Cabecera
@@ -118,7 +127,10 @@ export default function CarrilPage() {
         </p>
       </section>
       {estado?.simulacionHabilitada === true && !error && <PanelSimulacion />}
-      <fieldset className={estilos.selector}>
+      <fieldset
+        className={estilos.selector}
+        disabled={operacionEnCurso.origen !== null}
+      >
         <legend>Sentido del carril</legend>
         <div className={estilos.opciones}>
           {(["ENTRADA", "SALIDA"] as const).map((opcion) => (
@@ -158,6 +170,7 @@ export default function CarrilPage() {
       </p>
       <div className={estilos.distribucion}>
         <LecturaCarril
+          operacionEnCurso={operacionEnCurso}
           sentido={sentido}
           estado={estado}
           cargando={cargando}
@@ -262,39 +275,18 @@ export default function CarrilPage() {
           </section>
         </div>
       </div>
-      <section className={estilos.manual} aria-labelledby="titulo-manual">
-        <div>
-          <span className={estilos.numero}>04 / VALIDACIÓN</span>
-          <h2 id="titulo-manual">Lectura manual</h2>
-          <p className={estilos.descripcion}>
-            Cuando una lectura requiera revisión, podrás validar o digitar la
-            placa aquí.
-          </p>
-        </div>
-        <div className={estilos.controlesManuales}>
-          <label htmlFor="placa-manual">
-            Placa del vehículo
-            <input
-              id="placa-manual"
-              type="text"
-              placeholder="ABC123 o ABC12A"
-              disabled
-              aria-describedby="manual-pendiente"
-            />
-          </label>
-          <button
-            type="button"
-            className="boton-secundario"
-            disabled
-            aria-describedby="manual-pendiente"
-          >
-            Confirmar placa
-          </button>
-          <p id="manual-pendiente" className={estilos.nota}>
-            Validación manual pendiente de integración.
-          </p>
-        </div>
-      </section>
+      <PanelLecturaManual
+        key={sentido}
+        sentido={sentido}
+        sugerida={
+          !error &&
+          estado?.requiereValidacionManual &&
+          estado.sentido === sentido
+            ? (estado.ultimaLectura?.placa ?? "")
+            : ""
+        }
+        operacion={operacionEnCurso}
+      />
     </div>
   );
 }

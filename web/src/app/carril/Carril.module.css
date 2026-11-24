@@ -258,6 +258,10 @@
   grid-column: 1 / -1;
   margin-top: 0;
 }
+.resultadoManual {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
 @media (max-width: 1150px) {
   .distribucion {
     grid-template-columns: 1fr;
