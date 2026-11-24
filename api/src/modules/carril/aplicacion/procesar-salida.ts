@@ -5,6 +5,7 @@ import {
   type SolicitudLectura,
 } from '../../vehiculos/aplicacion/lector-placa';
 import { BarreraCarril } from './barrera-carril';
+import type { LecturaPlaca } from '../../vehiculos/dominio/lectura-placa';
 import { EstadoCarrilStore } from './estado-carril.store';
 import { TransaccionSalida, type ResultadoSalida } from './transaccion-salida';
 
@@ -25,6 +26,16 @@ export class ProcesarSalida {
     operador?: string,
   ): Promise<ResultadoSalida> {
     const lectura = await this.lector.leer(solicitud);
+    return this.ejecutarConLectura(sedeId, carrilId, lectura, operador);
+  }
+
+  /** Continúa con una lectura ya obtenida sin invocar otro adaptador. */
+  async ejecutarConLectura(
+    sedeId: number,
+    carrilId: number,
+    lectura: LecturaPlaca,
+    operador?: string,
+  ): Promise<ResultadoSalida> {
     const resultado = await this.transaccion.ejecutar({
       sedeId,
       carrilId,
