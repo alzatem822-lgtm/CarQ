@@ -1,0 +1,26 @@
+name: LPR
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths: ['lpr/**', '.github/workflows/lpr.yml']
+  push:
+    branches: [main, develop]
+    paths: ['lpr/**', '.github/workflows/lpr.yml']
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lpr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: 'lpr/requirements*.txt'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip check
+      - run: python -m pytest -q
