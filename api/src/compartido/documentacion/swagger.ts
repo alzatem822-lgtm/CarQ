@@ -10,6 +10,7 @@ export function crearDocumentoOpenApi(app: INestApplication) {
     )
     .addTag('Autenticación', 'Inicio de sesión y emisión del token JWT.')
     .addTag('Caja', 'Consulta de cobros y registro de pagos para operadores.')
+    .addTag('Cobros', 'Anulación de cobros pendientes por administradores.')
     .addTag(
       'Consulta',
       'Listados paginados de la sede para operadores y administradores.',
@@ -44,6 +45,7 @@ export function crearDocumentoOpenApi(app: INestApplication) {
     'ActualizarFranjaDto',
     'BuscarPendientesDto',
     'PagoEfectivoDto',
+    'AnularCobroDto',
   ]) {
     const esquema = documento.components?.schemas?.[nombre];
     if (esquema && !('$ref' in esquema)) esquema.additionalProperties = false;

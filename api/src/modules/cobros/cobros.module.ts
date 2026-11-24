@@ -12,6 +12,8 @@ import { FranjaRepository } from '../configuracion/aplicacion/franja.repository'
 import { TarifaRepository } from '../configuracion/aplicacion/tarifa.repository';
 import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { ResolverFranja } from '../configuracion/dominio/resolver-franja';
+import { AnulacionCobroController } from './adaptadores-entrada/anulacion-cobro.controller';
+import { AnularCobro } from './aplicacion/anular-cobro';
 import { CobroRepository } from './aplicacion/cobro.repository';
 import { PagoRepository } from './aplicacion/pago.repository';
 import { ConsultarPaseVigente } from './aplicacion/consultar-pase-vigente';
@@ -34,8 +36,13 @@ import { CobroPostgresRepository } from './infraestructura/cobro-postgres.reposi
 
 @Module({
   imports: [AccesoModule, ConfiguracionModule],
-  controllers: [CajaController],
+  controllers: [CajaController, AnulacionCobroController],
   providers: [
+    {
+      provide: AnularCobro,
+      useFactory: (cobros: CobroRepository) => new AnularCobro(cobros),
+      inject: [CobroRepository],
+    },
     {
       provide: PaseVigenteRepository,
       useFactory: (redis: Redis, reloj: Reloj) =>

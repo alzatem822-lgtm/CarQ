@@ -35,12 +35,35 @@ describe('Cobro', () => {
 
   it('conserva la auditoría de anulación y rechaza pagar ese cobro', () => {
     const anulado = nuevo().transicionar('ANULADO', {
-      usuario: 'admin',
-      motivo: 'Corrección',
+      usuario: ' admin ',
+      motivo: '  Corrección  ',
     });
     expect(anulado.estado).toBe('ANULADO');
     expect(anulado.anuladoPor).toBe('admin');
     expect(anulado.motivoAnulacion).toBe('Corrección');
     expect(() => anulado.transicionar('PAGADO')).toThrow('pendiente');
+  });
+
+  it('rechaza anular un cobro pagado', () => {
+    const pagado = nuevo().transicionar('PAGADO');
+    expect(() =>
+      pagado.transicionar('ANULADO', {
+        usuario: 'admin',
+        motivo: 'Corrección',
+      }),
+    ).toThrow('La transición solicitada requiere un cobro pendiente.');
+    expect(pagado.estado).toBe('PAGADO');
+  });
+
+  it.each([
+    { usuario: 'admin', motivo: '' },
+    { usuario: 'admin', motivo: '   ' },
+    { usuario: '   ', motivo: 'Corrección' },
+  ])('requiere usuario y motivo con contenido para anular', (anulacion) => {
+    const cobro = nuevo();
+    expect(() => cobro.transicionar('ANULADO', anulacion)).toThrow(
+      'La anulación requiere usuario y motivo.',
+    );
+    expect(cobro.estado).toBe('PENDIENTE');
   });
 });

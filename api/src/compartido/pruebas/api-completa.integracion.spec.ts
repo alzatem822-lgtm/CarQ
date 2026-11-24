@@ -592,6 +592,117 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
     expect(pagos).toEqual([{ id: primero.body.pago.id, referencia }]);
   });
 
+  describe('anulación de cobros (CARQ-179 a CARQ-181)', () => {
+    let cobroId: number;
+
+    const enviar = (motivo: string) =>
+      request(servidor())
+        .post(`/cobros/${cobroId}/anulacion`)
+        .set(admin())
+        .send({ motivo });
+
+    beforeEach(async () => {
+      const [{ id }] = await db!.query<{ id: number }[]>(
+        `INSERT INTO cobro
+           (placa, tipo_vehiculo, sede_id, dia_operativo, franja, tarifa_aplicada)
+         SELECT 'ANU181', 'CARRO', id, '2026-11-19', 'DIURNA', 5000
+         FROM sede WHERE nombre = 'Sede principal'
+         RETURNING id`,
+      );
+      cobroId = id;
+    });
+
+    afterEach(async () => {
+      await db!.query('DELETE FROM cobro WHERE id = $1', [cobroId]);
+    });
+
+    it('permite al administrador anular y persiste el usuario y motivo', async () => {
+      const respuesta = await enviar('  Cobro duplicado  ').expect(200);
+      expect(respuesta.body).toMatchObject({
+        id: cobroId,
+        estado: 'ANULADO',
+        anuladoPor: 'administrador',
+        motivoAnulacion: 'Cobro duplicado',
+      });
+      const filas = await db!.query(
+        'SELECT estado, anulado_por, motivo_anulacion FROM cobro WHERE id = $1',
+        [cobroId],
+      );
+      expect(filas).toEqual([
+        {
+          estado: 'ANULADO',
+          anulado_por: 'administrador',
+          motivo_anulacion: 'Cobro duplicado',
+        },
+      ]);
+    });
+
+    it('valida la sesión, el rol, el motivo y el ID antes de anular', async () => {
+      await request(servidor())
+        .post(`/cobros/${cobroId}/anulacion`)
+        .send({ motivo: 'Corrección' })
+        .expect(401);
+      await request(servidor())
+        .post(`/cobros/${cobroId}/anulacion`)
+        .set('Authorization', `Bearer ${tokenOperador}`)
+        .send({ motivo: 'Corrección' })
+        .expect(403);
+      await enviar('   ').expect(400);
+      await request(servidor())
+        .post(`/cobros/${cobroId}/anulacion`)
+        .set(admin())
+        .send({ motivo: 'Corrección', usuario: 'operador' })
+        .expect(400);
+      await request(servidor())
+        .post('/cobros/2147483648/anulacion')
+        .set(admin())
+        .send({ motivo: 'Corrección' })
+        .expect(400);
+      await request(servidor())
+        .post('/cobros/2147483647/anulacion')
+        .set(admin())
+        .send({ motivo: 'Corrección' })
+        .expect(404);
+      const filas = await db!.query(
+        'SELECT estado, anulado_por, motivo_anulacion FROM cobro WHERE id = $1',
+        [cobroId],
+      );
+      expect(filas).toEqual([
+        { estado: 'PENDIENTE', anulado_por: null, motivo_anulacion: null },
+      ]);
+    });
+
+    it('rechaza anular un cobro pagado y conserva su estado', async () => {
+      await db!.query("UPDATE cobro SET estado = 'PAGADO' WHERE id = $1", [
+        cobroId,
+      ]);
+      const respuesta = await enviar('Corrección').expect(422);
+      expect(respuesta.body.codigo).toBe('ESTADO_COBRO_INVALIDO');
+      const filas = await db!.query('SELECT estado FROM cobro WHERE id = $1', [
+        cobroId,
+      ]);
+      expect(filas).toEqual([{ estado: 'PAGADO' }]);
+    });
+
+    it('conserva la primera anulación ante solicitudes simultáneas', async () => {
+      const respuestas = await Promise.all([
+        enviar('Primera solicitud'),
+        enviar('Segunda solicitud'),
+      ]);
+      expect(respuestas.map((r) => r.status).sort()).toEqual([200, 422]);
+      const filas = await db!.query(
+        'SELECT motivo_anulacion FROM cobro WHERE id = $1',
+        [cobroId],
+      );
+      expect(filas).toEqual([
+        {
+          motivo_anulacion: respuestas.find((r) => r.status === 200)?.body
+            .motivoAnulacion,
+        },
+      ]);
+    });
+  });
+
   it('sirve Swagger y refleja todas las rutas de la aplicación real', async () => {
     const r = await request(servidor()).get('/docs-json');
     expect(r.status).toBe(200);
@@ -599,6 +710,7 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
       'post /auth/login',
       'get /auth/sesion',
       'get /cobros/pendientes',
+      'post /cobros/{cobroId}/anulacion',
       'post /pagos/efectivo',
       'get /consulta/eventos',
       'get /consulta/cobros',
@@ -631,6 +743,18 @@ describe('API completa con PostgreSQL, bcrypt y JWT reales', () => {
         },
         '401': expect.any(Object),
         '403': expect.any(Object),
+      },
+    });
+    expect(r.body.paths['/cobros/{cobroId}/anulacion'].post).toMatchObject({
+      operationId: 'anularCobro',
+      security: [{ sesion: [] }],
+      responses: {
+        '200': expect.any(Object),
+        '400': expect.any(Object),
+        '401': expect.any(Object),
+        '403': expect.any(Object),
+        '404': expect.any(Object),
+        '422': expect.any(Object),
       },
     });
     expect((await request(servidor()).get('/docs/')).status).toBe(200);
